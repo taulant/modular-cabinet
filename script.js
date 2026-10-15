@@ -7,6 +7,11 @@ const MONTHS = ['January','February','March','April','May','June',
                 'July','August','September','October','November','December'];
 
 const MM_PER_INCH = 25.4;
+const MATERIALS = [
+  {value:'plywood', label:'Plywood'},
+  {value:'solid-wood', label:'Solid wood'},
+  {value:'engineered-wood', label:'Engineered wood'}
+];
 
 /* default screw spacing (mm) — 50% of the default outer depth
    (default cavityD = 340, ply = 19.05  →  oD = 378.1) */
@@ -16,6 +21,7 @@ const DEFAULTS = {
   cavityW: 330,
   cavityD: 340,
   cavityH: 340,
+  material: 'plywood',
   ply:     19.05,
   legD:    40,
   legH:    10,
@@ -42,6 +48,7 @@ const URL_NUM_KEYS = {
 
 /* short URL key  →  state key (text labels) */
 const URL_TXT_KEYS = {
+  m:  'material',
   h:  'header',
   sh: 'subheader',
   ft: 'titleFront',
@@ -54,6 +61,11 @@ const URL_TXT_KEYS = {
    STATE
    ============================================================ */
 const state = Object.assign({}, DEFAULTS);
+
+function materialLabel(){
+  const material = MATERIALS.find(function(item){ return item.value === state.material; });
+  return material ? material.label : state.material;
+}
 
 /* ============================================================
    NUMBER / FRACTION UTILITIES
@@ -165,6 +177,10 @@ function readURLParams(){
   for (const short in URL_TXT_KEYS){
     const v = params.get(short);
     if (v !== null) state[URL_TXT_KEYS[short]] = v;
+  }
+
+  if (!MATERIALS.some(function(material){ return material.value === state.material; })){
+    state.material = DEFAULTS.material;
   }
 }
 
@@ -390,7 +406,7 @@ function render(){
   P.push(
     T(40, 48, state.header, {size:22, weight:'bold', ls:'0.8'}),
     T(40, 70, state.subheader, {size:12.5, ls:'1'}),
-    T(40, 90, 'MATERIAL: ' + disp(t) + ' ' + unitAbbr() + ' BIRCH PLYWOOD · JOINERY: SCREWS FROM TOP & BOTTOM FACES · OPEN BACK',
+    T(40, 90, 'MATERIAL: ' + materialLabel().toUpperCase() + ' · THICKNESS: ' + disp(t) + ' ' + unitAbbr() + ' · JOINERY: SCREWS FROM TOP & BOTTOM FACES · OPEN BACK',
       {size:11.5}),
     T(1200, 48, todayFormatted(), {size:12, anchor:'end', weight:'bold'}),
     T(1200, 68, 'UNITS: ' + unitAbbr(), {size:11, anchor:'end'}),
@@ -638,7 +654,7 @@ function render(){
     let g = '';
     g += R(bx, by, bw, bh, 1.5);
     g += L(bx, by+30, bx+bw, by+30, 1.5);
-    g += T(bx+14, by+21, 'CUT LIST — ' + disp(t) + ' ' + unitAbbr() + ' PLYWOOD', {size:12.5, weight:'bold', ls:'1.2'});
+    g += T(bx+14, by+21, 'CUT LIST — ' + materialLabel().toUpperCase() + ' · ' + disp(t) + ' ' + unitAbbr() + ' THICK', {size:12.5, weight:'bold', ls:'1.2'});
 
     const cx = [bx+16, bx+64, bx+318, bx+368];
     const header = ['ITEM','PART','QTY','SIZE (' + unitAbbr() + ')'];
@@ -689,11 +705,11 @@ const CONTROLS = [
 ];
 
 const PLY_PRESETS = [
-  {v:19.05, l:'3/4 in — 19.05 mm  (Home Depot birch)'},
+  {v:19.05, l:'3/4 in — 19.05 mm'},
   {v:12.70, l:'1/2 in — 12.70 mm'},
   {v:25.40, l:'1 in — 25.40 mm'},
-  {v:18.00, l:'18 mm — metric ply'},
-  {v:19.00, l:'19 mm — metric ply'}
+  {v:18.00, l:'18 mm'},
+  {v:19.00, l:'19 mm'}
 ];
 
 const LABEL_FIELDS = [
@@ -721,9 +737,20 @@ function buildPanel(){
          '</select>' +
        '</div>';
 
-  /* plywood */
+  /* material */
   h += '<div class="ctl">' +
-         '<div class="ctl-head"><span>Plywood thickness</span>' +
+         '<div class="ctl-head"><span>Material</span></div>' +
+         '<select id="material-select">';
+  MATERIALS.forEach(function(material){
+    h += '<option value="' + material.value + '"' +
+         (state.material === material.value ? ' selected' : '') + '>' +
+         material.label + '</option>';
+  });
+  h += '</select></div>';
+
+  /* material thickness */
+  h += '<div class="ctl">' +
+         '<div class="ctl-head"><span>Material thickness</span>' +
          '<span class="val" id="ply-val"></span></div>' +
          '<select id="ply-preset">';
   PLY_PRESETS.forEach(function(p){
@@ -773,7 +800,7 @@ function buildPanel(){
          'Parameters are mirrored in the URL. Share the link to restore the exact drawing.' +
          '<br><br>' +
          '<code>?u=</code>mm|in · <code>?cw=</code> <code>?cd=</code> <code>?ch=</code> cavity<br>' +
-         '<code>?t=</code> ply · <code>?ld=</code> leg Ø · <code>?lh=</code> leg H<br>' +
+         '<code>?m=</code> material · <code>?t=</code> thickness · <code>?ld=</code> leg Ø · <code>?lh=</code> leg H<br>' +
          '<code>?ss=</code> screw spacing<br>' +
          '<code>?h=</code> <code>?sh=</code> header · <code>?ft=</code> <code>?st=</code> <code>?tt=</code> <code>?bt=</code> titles' +
        '</div>' +
@@ -801,7 +828,7 @@ function wirePanel(){
     });
   });
 
-  /* plywood */
+  /* material thickness */
   const pr = document.getElementById('ply-range');
   const pn = document.getElementById('ply-num');
   const ps = document.getElementById('ply-preset');
@@ -819,6 +846,12 @@ function wirePanel(){
   if (ps) ps.addEventListener('change', function(){
     if (ps.value === 'custom') return;
     setPly(parseFloat(ps.value));
+  });
+
+  const ms = document.getElementById('material-select');
+  if (ms) ms.addEventListener('change', function(){
+    state.material = ms.value;
+    sync();
   });
 
   /* units */
@@ -915,7 +948,7 @@ function sync(){
   if (pn && document.activeElement !== pn) pn.value = formatValue(state.ply);
   if (pl) pl.textContent = formatValue(state.ply) + ' ' + unitLower();
 
-  /* ply preset select */
+  /* thickness preset select */
   const ps = document.getElementById('ply-preset');
   if (ps){
     const match = PLY_PRESETS.find(function(p){ return Math.abs(p.v - state.ply) < 0.001; });
@@ -925,6 +958,9 @@ function sync(){
   /* unit select */
   const us = document.getElementById('unit-select');
   if (us) us.value = state.units;
+
+  const ms = document.getElementById('material-select');
+  if (ms) ms.value = state.material;
 
   render();
   updateReadout();
@@ -946,6 +982,7 @@ function updateReadout(){
   const row = (k, v) => '<div><span class="k">' + k + '</span><span class="v">' + v + '</span></div>';
 
   el.innerHTML =
+    row('Material',           materialLabel()) +
     row('Exterior W × D × H', formatValue(oW) + ' × ' + formatValue(oD) + ' × ' + formatValue(oH) + u) +
     row('Interior cavity',    formatValue(cw) + ' × ' + formatValue(cd) + ' × ' + formatValue(ch) + u) +
     row('Overall height + legs', formatValue(oH + legH) + u) +
