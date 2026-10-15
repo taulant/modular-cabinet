@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Modular Record Player Organizer — Parametric Blueprint</title>
+<style>
+  :root{
+    --panel-w: 380px;
+    --tab-w: 30px;
+    --ease: cubic-bezier(.4,0,.2,1);
+  }
+  @media (max-width: 760px){
+    :root{ --panel-w: 88vw; }
+  }
+
+  *{box-sizing:border-box}
+  html,body{
+    margin:0;padding:0;
+    width:100%;height:100%;
+    overflow:hidden;
+    background:#c9c9c9;color:#000;
+    font-family:Arial,Helvetica,sans-serif;
+  }
+
+  #app{
+    position:relative;
+    width:100vw;height:100vh;height:100dvh;
+    overflow:hidden;
+  }
+
+  #stage{
+    position:absolute;top:0;bottom:0;left:0;right:0;
+    background:#fff;overflow:hidden;
+    transition: right .28s var(--ease);
+  }
+  #app.panel-open #stage{ right: var(--panel-w); }
+  #stage svg{display:block;width:100%;height:100%;}
+
+  #panel{
+    position:absolute;top:0;right:0;bottom:0;
+    width:var(--panel-w);
+    background:#ececec;border-left:1px solid #000;
+    overflow-y:auto;overflow-x:hidden;
+    -webkit-overflow-scrolling:touch;
+    padding:16px 16px 34px;
+    transform: translateX(100%);
+    transition: transform .28s var(--ease);
+    z-index:15;
+  }
+  #app.panel-open #panel{ transform: translateX(0); }
+
+  #tab{
+    position:absolute;top:50%;right:0;
+    transform: translateY(-50%);
+    width:var(--tab-w);height:60px;
+    display:flex;align-items:center;justify-content:center;
+    background:#000;color:#fff;border:none;
+    border-radius:6px 0 0 6px;
+    font-size:15px;font-family:inherit;font-weight:bold;line-height:1;
+    cursor:pointer;z-index:20;padding:0;
+    box-shadow:0 2px 10px rgba(0,0,0,.28);
+    transition: right .28s var(--ease), background .15s;
+    user-select:none;-webkit-tap-highlight-color:transparent;
+  }
+  #tab:hover{ background:#222; }
+  #app.panel-open #tab{ right: var(--panel-w); }
+
+  @media (max-width: 760px){
+    #app.panel-open #stage{ right:0; }
+    #panel{ box-shadow:-10px 0 30px rgba(0,0,0,.35); }
+  }
+
+  .panel-title{
+    font-size:13px;font-weight:bold;letter-spacing:1.4px;
+    text-transform:uppercase;margin:0 0 4px;
+  }
+  .panel-sub{
+    font-size:10.5px;letter-spacing:.4px;color:#333;
+    border-bottom:2px solid #000;padding-bottom:10px;margin:0 0 16px;
+  }
+
+  .unit-row{
+    display:flex;gap:8px;align-items:center;margin-bottom:16px;
+    padding-bottom:14px;border-bottom:1px solid #999;
+  }
+  .unit-row label{
+    font-size:10.5px;font-weight:bold;letter-spacing:.7px;
+    text-transform:uppercase;white-space:nowrap;
+  }
+  .unit-row select{flex:1;}
+
+  .ctl{margin-bottom:15px}
+  .ctl-head{
+    display:flex;justify-content:space-between;align-items:baseline;
+    font-size:10.5px;font-weight:bold;letter-spacing:.7px;
+    text-transform:uppercase;margin-bottom:5px;gap:8px;
+  }
+  .ctl-head .val{font-size:11.5px;font-weight:normal;letter-spacing:0;white-space:nowrap}
+  .ctl-head .val.err{color:#a00;font-weight:bold}
+  .ctl-row{display:flex;gap:8px;align-items:center}
+  input[type=range]{flex:1 1 auto;min-width:0;accent-color:#000;height:18px}
+
+  .num-inp, .txt{
+    font-family:inherit;font-size:11.5px;
+    padding:4px 6px;border:1px solid #000;background:#fff;
+  }
+  .num-inp{
+    width:82px;flex:0 0 82px;text-align:right;
+  }
+  .num-inp.err{border-color:#a00;background:#ffecec}
+  .txt{width:100%;}
+
+  select{
+    width:100%;font-family:inherit;font-size:11.5px;
+    padding:4px;border:1px solid #000;background:#fff;
+  }
+
+  .section{
+    font-size:10.5px;font-weight:bold;letter-spacing:1.2px;
+    text-transform:uppercase;border-top:1px solid #999;
+    padding-top:10px;margin:18px 0 12px;
+  }
+  .readout{
+    border:1px solid #000;background:#fff;padding:10px 12px;
+    font-size:11.5px;line-height:1.7;
+  }
+  .readout .k{display:inline-block;min-width:130px;color:#333}
+  .readout .v{font-weight:bold}
+  .btn-row{display:flex;gap:8px;margin-top:12px}
+  button.action{
+    flex:1;font-family:inherit;font-size:11px;font-weight:bold;
+    letter-spacing:.8px;text-transform:uppercase;
+    padding:9px 6px;border:1.5px solid #000;background:#fff;
+    cursor:pointer;
+  }
+  button.action:hover{background:#000;color:#fff}
+  button.action:disabled{opacity:.65;cursor:default}
+
+  .hint{
+    font-size:10px;line-height:1.5;color:#444;
+    border:1px dashed #999;padding:8px 10px;margin-top:10px;
+  }
+  .hint code{
+    font-family:Consolas,monospace;font-size:10px;
+    background:#fff;padding:1px 3px;border:1px solid #ccc;
+  }
+  .url-length{
+    display:flex;justify-content:space-between;
+    font-size:10px;color:#333;margin-top:8px;
+    border-top:1px dashed #999;padding-top:6px;
+  }
+  .url-length .num{font-weight:bold}
+  .url-length.warn .num{color:#a00}
+
+  .field-note{
+    font-size:10px;color:#666;margin-top:3px;line-height:1.4;
+  }
+  .field-note.warn{color:#a00}
+
+  @media print{
+    html,body{ height:auto; overflow:visible; background:#fff; }
+    #app{ height:auto; overflow:visible; }
+    #panel, #tab{ display:none !important; }
+    #stage{
+      position:static;
+      width:100%; height:auto;
+      right:auto !important;
+      overflow:visible;
+    }
+    #stage svg{width:100%;height:auto;page-break-inside:avoid;}
+  }
+</style>
+</head>
+<body>
+<div id="app" class="panel-open">
+  <main id="stage">
+    <svg id="dwg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 1500"
+         preserveAspectRatio="xMidYMid meet"></svg>
+  </main>
+
+  <button id="tab" type="button" aria-controls="panel" aria-expanded="true" aria-label="Hide parameters">&#8250;</button>
+
+  <aside id="panel" aria-label="Drawing parameters"></aside>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   CONSTANTS
+   ============================================================ */
+const MONTHS = ['January','February','March','April','May','June',
+                'July','August','September','October','November','December'];
+
+const MM_PER_INCH = 25.4;
+
+/* default screw spacing (mm) — 50% of the default outer depth
+   (default cavityD = 340, ply = 19.05  →  oD = 378.1) */
+const SCREW_SPACING_DEFAULT = 189.05;
+
+const DEFAULTS = {
+  cavityW: 330,
+  cavityD: 340,
+  cavityH: 340,
+  ply:     19.05,
+  legD:    40,
+  legH:    10,
+  screwSpacing: SCREW_SPACING_DEFAULT,
+  units:   'mm',
+  header:  'MODULAR CABINET',
+  subheader: 'STACKABLE VINYL STORAGE',
+  titleFront: 'FRONT',
+  titleSide:  'RIGHT SIDE',
+  titleTop:   'TOP — SCREW POSITIONS',
+  titleBottom:'BOTTOM — LEG & SCREW POSITIONS'
+};
+
+/* short URL key  →  state key (numbers — always stored in mm) */
+const URL_NUM_KEYS = {
+  cw: 'cavityW',
+  cd: 'cavityD',
+  ch: 'cavityH',
+  t:  'ply',
+  ld: 'legD',
+  lh: 'legH',
+  ss: 'screwSpacing'
+};
+
+/* short URL key  →  state key (text labels) */
+const URL_TXT_KEYS = {
+  h:  'header',
+  sh: 'subheader',
+  ft: 'titleFront',
+  st: 'titleSide',
+  tt: 'titleTop',
+  bt: 'titleBottom'
+};
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const state = Object.assign({}, DEFAULTS);
+
+/* ============================================================
+   NUMBER / FRACTION UTILITIES
+   ============================================================ */
+function gcd(a, b){ return b ? gcd(b, a % b) : a; }
+
+function decimalToFraction(v, denom){
+  v = Math.round(v * denom) / denom;
+  const whole = Math.floor(v);
+  let num = Math.round((v - whole) * denom);
+  let den = denom;
+  if (num === 0) return String(whole);
+  if (num === den) return String(whole + 1);
+  const g = gcd(num, den);
+  num /= g; den /= g;
+  if (whole === 0) return num + '/' + den;
+  return whole + ' ' + num + '/' + den;
+}
+
+function parseFraction(str){
+  str = String(str).trim();
+  let m = str.match(/^(\d+)\s+(\d+)\s*\/\s*(\d+)$/);
+  if (m) return parseInt(m[1],10) + parseInt(m[2],10)/parseInt(m[3],10);
+  m = str.match(/^(\d+)\s*\/\s*(\d+)$/);
+  if (m) return parseInt(m[1],10) / parseInt(m[2],10);
+  const v = parseFloat(str);
+  return isFinite(v) ? v : NaN;
+}
+
+const fmt = v => {
+  const r = Math.round(v*100)/100;
+  if (Number.isInteger(r)) return String(r);
+  if (Math.abs(r*10 - Math.round(r*10)) < 1e-9) return r.toFixed(1);
+  return r.toFixed(2);
+};
+
+function formatValue(v_mm){
+  if (state.units === 'in') return decimalToFraction(v_mm / MM_PER_INCH, 16);
+  return fmt(v_mm);
+}
+
+function disp(v_mm){ return formatValue(v_mm); }
+function unitAbbr(){ return state.units === 'in' ? 'IN' : 'MM'; }
+function unitLower(){ return state.units === 'in' ? 'in' : 'mm'; }
+
+function parseInput(str){
+  str = String(str).trim().replace(/\s*(mm|in|"|')\s*$/i, '').trim();
+  if (!str) return NaN;
+  if (state.units === 'in'){
+    const inches = parseFraction(str);
+    return isFinite(inches) ? inches * MM_PER_INCH : NaN;
+  }
+  return parseFloat(str);
+}
+
+const clampNum = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+/* ============================================================
+   SCREW SPACING — validation & fallback
+   ============================================================ */
+/* Geometry constraints for a valid screw spacing:
+   each screw must sit at least (ply + 5 mm) inside the front / back
+   edge of the side panel, so the screw head never splits the panel. */
+function spacingLimits(){
+  const t  = state.ply;
+  const oD = state.cavityD + 2*t;
+  const margin = t + 5;
+  const minSpacing = Math.max(20, 2*margin);
+  const maxSpacing = Math.max(minSpacing, oD - 2*margin);
+  return {min:minSpacing, max:maxSpacing, oD:oD};
+}
+
+function isValidSpacing(v){
+  if (!isFinite(v) || v <= 0) return false;
+  const lim = spacingLimits();
+  return v >= lim.min && v <= lim.max;
+}
+
+/* Stored fallback when a user input is out of scope:
+   prefer the fixed default, otherwise half the outer depth. */
+function fallbackSpacing(){
+  if (isValidSpacing(SCREW_SPACING_DEFAULT)) return SCREW_SPACING_DEFAULT;
+  const lim = spacingLimits();
+  return Math.round(lim.oD * 0.5);
+}
+
+/* Effective value used by the drawing */
+function resolvedSpacing(){
+  const v = state.screwSpacing;
+  if (isValidSpacing(v)) return v;
+  return fallbackSpacing();
+}
+
+/* ============================================================
+   URL PARAMETERS
+   ============================================================ */
+function readURLParams(){
+  const params = new URLSearchParams(window.location.search);
+
+  const u = params.get('u');
+  if (u === 'in' || u === 'mm') state.units = u;
+
+  for (const short in URL_NUM_KEYS){
+    if (!params.has(short)) continue;
+    const v = parseFloat(params.get(short));
+    if (isFinite(v)) state[URL_NUM_KEYS[short]] = v;
+  }
+
+  for (const short in URL_TXT_KEYS){
+    const v = params.get(short);
+    if (v !== null) state[URL_TXT_KEYS[short]] = v;
+  }
+}
+
+function writeURLParams(){
+  const params = new URLSearchParams();
+  params.set('u', state.units);
+
+  for (const short in URL_NUM_KEYS){
+    params.set(short, fmt(state[URL_NUM_KEYS[short]]));
+  }
+  for (const short in URL_TXT_KEYS){
+    params.set(short, state[URL_TXT_KEYS[short]]);
+  }
+
+  const qs = params.toString();
+  const url = window.location.pathname + '?' + qs + window.location.hash;
+  try { history.replaceState(null, '', url); } catch(e){ /* ignore */ }
+}
+
+let urlDebounce;
+function scheduleURLWrite(){
+  clearTimeout(urlDebounce);
+  urlDebounce = setTimeout(function(){
+    writeURLParams();
+    updateURLLength();
+  }, 180);
+}
+
+function updateURLLength(){
+  const el = document.getElementById('url-length');
+  if (!el) return;
+  const len = window.location.href.length;
+  const num = el.querySelector('.num');
+  if (num) num.textContent = len.toLocaleString();
+  el.classList.toggle('warn', len > 1800);
+}
+
+/* ============================================================
+   PANEL TOGGLE
+   ============================================================ */
+(function initToggle(){
+  const app = document.getElementById('app');
+  const tab = document.getElementById('tab');
+
+  if (window.matchMedia('(max-width: 760px)').matches){
+    app.classList.remove('panel-open');
+  }
+
+  function syncTab(){
+    const open = app.classList.contains('panel-open');
+    tab.innerHTML = open ? '&#8250;' : '&#8249;';
+    tab.setAttribute('aria-expanded', String(open));
+    tab.setAttribute('aria-label', open ? 'Hide parameters' : 'Show parameters');
+    tab.setAttribute('title',      open ? 'Hide parameters' : 'Show parameters');
+  }
+
+  tab.addEventListener('click', function(){
+    app.classList.toggle('panel-open');
+    syncTab();
+  });
+
+  window.addEventListener('keydown', function(e){
+    if (e.key === '[' && !/input|textarea|select/i.test(document.activeElement.tagName)){
+      app.classList.toggle('panel-open');
+      syncTab();
+    }
+  });
+
+  syncTab();
+})();
+
+/* ============================================================
+   SVG HELPERS
+   ============================================================ */
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const escAttr = s => String(s)
+  .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+  .replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function E(tag, attrs){
+  let a = '';
+  for (const k in attrs){
+    const v = attrs[k];
+    if (v === null || v === undefined) continue;
+    a += ' ' + k + '="' + v + '"';
+  }
+  return '<' + tag + a + '/>';
+}
+function EL(tag, attrs, inner){
+  let a = '';
+  for (const k in attrs){
+    const v = attrs[k];
+    if (v === null || v === undefined) continue;
+    a += ' ' + k + '="' + v + '"';
+  }
+  return '<' + tag + a + '>' + inner + '</' + tag + '>';
+}
+function T(x, y, str, o){
+  o = o || {};
+  const a = {
+    x: x, y: y,
+    'font-family': 'Arial, Helvetica, sans-serif',
+    'font-size': o.size || 13,
+    'text-anchor': o.anchor || 'start',
+    'fill': '#000'
+  };
+  if (o.weight) a['font-weight'] = o.weight;
+  if (o.ls) a['letter-spacing'] = o.ls;
+  if (o.rotate) a['transform'] = 'rotate(' + o.rotate + ' ' + x + ' ' + y + ')';
+  return EL('text', a, esc(str));
+}
+function L(x1,y1,x2,y2,w,dash){
+  const a = {x1:x1,y1:y1,x2:x2,y2:y2,stroke:'#000','stroke-width':(w===undefined?1:w)};
+  if (dash) a['stroke-dasharray'] = dash;
+  return E('line', a);
+}
+function R(x,y,w,h,sw,dash,fill){
+  const a = {x:x,y:y,width:w,height:h,fill:fill||'none',stroke:'#000','stroke-width':(sw===undefined?1:sw)};
+  if (dash) a['stroke-dasharray'] = dash;
+  return E('rect', a);
+}
+function C(cx,cy,r,sw,dash){
+  const a = {cx:cx,cy:cy,r:r,fill:'none',stroke:'#000','stroke-width':(sw===undefined?1:sw)};
+  if (dash) a['stroke-dasharray'] = dash;
+  return E('circle', a);
+}
+const EXT = (x1,y1,x2,y2) => L(x1,y1,x2,y2,0.7);
+
+function dimH(x1,x2,y,label,o){
+  o = o || {};
+  const sz = o.size || 12.5;
+  let g = L(x1,y,x2,y,1);
+  g += L(x1-5,y+5,x1+5,y-5,1.8);
+  g += L(x2-5,y+5,x2+5,y-5,1.8);
+  const ty = o.below ? y + sz + 6 : y - 6;
+  g += T((x1+x2)/2, ty, label, {size:sz, anchor:'middle'});
+  return g;
+}
+function dimV(y1,y2,x,label,o){
+  o = o || {};
+  const sz = o.size || 12.5;
+  let g = L(x,y1,x,y2,1);
+  g += L(x-5,y1+5,x+5,y1-5,1.8);
+  g += L(x-5,y2+5,x+5,y2-5,1.8);
+  const tx = o.right ? x + 7 : x - 7;
+  g += T(tx, (y1+y2)/2 + 4, label, {size:sz, anchor: o.right ? 'start' : 'end'});
+  return g;
+}
+const arrowR = (x,y) => E('path',{d:'M'+x+','+y+' l-9,-4 l0,8 Z', fill:'#000'});
+const arrowL = (x,y) => E('path',{d:'M'+x+','+y+' l9,-4 l0,8 Z',  fill:'#000'});
+
+function screwMark(mx,my,r){
+  r = r || 5;
+  return C(mx,my,r,1.1,'3 2') +
+         L(mx-(r+3),my,mx+(r+3),my,0.6) +
+         L(mx,my-(r+3),mx,my+(r+3),0.6);
+}
+
+function todayFormatted(){
+  const d = new Date();
+  return d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function render(){
+
+  const t     = state.ply;
+  const cw    = state.cavityW;
+  const cd    = state.cavityD;
+  const ch    = state.cavityH;
+  const legD  = state.legD;
+  const legH  = Math.max(0, state.legH);
+
+  const oW = cw + 2*t;
+  const oD = cd + 2*t;
+  const oH = ch + 2*t;
+
+  /* ---- screw positions — centred on the side panel thickness,
+         symmetric about the panel mid-depth, spacing is parametric ---- */
+  const spacing = resolvedSpacing();
+  const screwX1 = t/2;
+  const screwX2 = oW - t/2;
+  const screwY1 = (oD - spacing) / 2;
+  const screwY2 = (oD + spacing) / 2;
+
+  let legInset = legD/2 + 15;
+  const maxInset = (Math.min(oW, oD) - legD)/2 - 2;
+  if (legInset > maxInset) legInset = Math.max(legD/2, maxInset);
+
+  const cells = {
+    front : {x:20,  y:128, w:600, h:562},
+    side  : {x:630, y:128, w:600, h:562},
+    top   : {x:20,  y:700, w:600, h:562},
+    bottom: {x:630, y:700, w:600, h:562}
+  };
+
+  const maxW = Math.max(oW, oD);
+  const maxH = Math.max(oH + legH, oD);
+  const s = Math.min(430/maxW, 385/maxH);
+
+  const vh1 = oH + legH;
+  const ty1 = cells.front.y + (cells.front.h - vh1*s)/2;
+  const ty2 = cells.top.y   + (cells.top.h   - oD*s)/2;
+
+  const txF = cells.front.x  + (cells.front.w  - oW*s)/2;
+  const txS = cells.side.x   + (cells.side.w   - oD*s)/2;
+  const txT = cells.top.x    + (cells.top.w    - oW*s)/2;
+  const txB = cells.bottom.x + (cells.bottom.w - oW*s)/2;
+
+  const P = [];
+
+  P.push(
+    '<defs>' +
+      '<pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">' +
+        '<line x1="0" y1="0" x2="0" y2="8" stroke="#000" stroke-width="0.55" stroke-opacity="0.30"/>' +
+      '</pattern>' +
+    '</defs>'
+  );
+
+  /* TITLE BLOCK */
+  P.push(
+    T(40, 48, state.header, {size:22, weight:'bold', ls:'0.8'}),
+    T(40, 70, state.subheader, {size:12.5, ls:'1'}),
+    T(40, 90, 'MATERIAL: ' + disp(t) + ' ' + unitAbbr() + ' BIRCH PLYWOOD · JOINERY: SCREWS FROM TOP & BOTTOM FACES · OPEN BACK',
+      {size:11.5}),
+    T(1200, 48, todayFormatted(), {size:12, anchor:'end', weight:'bold'}),
+    T(1200, 68, 'UNITS: ' + unitAbbr(), {size:11, anchor:'end'}),
+    T(1200, 86, 'SHEET 1 OF 1', {size:11, anchor:'end'}),
+    L(40, 100, 1200, 100, 2)
+  );
+
+  /* FRONT ELEVATION */
+  {
+    const X = v => txF + v*s;
+    const Y = v => ty1 + v*s;
+    let g = '';
+
+    g += R(X(0), Y(0), oW*s, oH*s, 2.2);
+    g += L(X(0), Y(t), X(oW), Y(t), 1.2);
+    g += L(X(0), Y(oH-t), X(oW), Y(oH-t), 1.2);
+    g += L(X(t), Y(t), X(t), Y(oH-t), 1.2);
+    g += L(X(oW-t), Y(t), X(oW-t), Y(oH-t), 1.2);
+
+    if (legH > 0){
+      g += R(X(legInset-legD/2), Y(oH), legD*s, legH*s, 1.8);
+      g += R(X(oW-legInset-legD/2), Y(oH), legD*s, legH*s, 1.8);
+      g += L(X(-52), Y(oH+legH), X(oW+52), Y(oH+legH), 2.2);
+    } else {
+      g += L(X(-52), Y(oH), X(oW+52), Y(oH), 2.2);
+    }
+
+    g += EXT(X(0), Y(0), X(0), Y(0)-40);
+    g += EXT(X(oW), Y(0), X(oW), Y(0)-40);
+    g += dimH(X(0), X(oW), Y(0)-34, disp(oW));
+
+    g += EXT(X(t), Y(t), X(t), Y(0)-74);
+    g += EXT(X(oW-t), Y(t), X(oW-t), Y(0)-74);
+    g += dimH(X(t), X(oW-t), Y(0)-68, disp(cw) + ' INT.');
+
+    g += EXT(X(0), Y(0), X(0)-52, Y(0));
+    g += EXT(X(0), Y(oH), X(0)-52, Y(oH));
+    g += dimV(Y(0), Y(oH), X(0)-46, disp(oH));
+
+    g += L(X(oW*0.55), Y(t/2), X(oW)+26, Y(0)-12, 0.8);
+    g += C(X(oW*0.55), Y(t/2), 2, 1);
+    g += T(X(oW)+30, Y(0)-8, 'T = ' + disp(t) + ' ' + unitAbbr(), {size:11.5});
+
+    if (legH > 0){
+      const lx = X(legInset + legD/2) + 32;
+      g += EXT(X(legInset+legD/2), Y(oH), lx+10, Y(oH));
+      g += EXT(X(legInset+legD/2), Y(oH+legH), lx+10, Y(oH+legH));
+      g += dimV(Y(oH), Y(oH+legH), lx, disp(legH));
+
+      const by = Y(oH+legH) + 32;
+      g += EXT(X(legInset-legD/2), Y(oH+legH), X(legInset-legD/2), by+6);
+      g += EXT(X(legInset+legD/2), Y(oH+legH), X(legInset+legD/2), by+6);
+      g += dimH(X(legInset-legD/2), X(legInset+legD/2), by, 'Ø' + disp(legD));
+    }
+
+    P.push(g);
+    P.push(T(cells.front.x + cells.front.w/2, cells.front.y + cells.front.h - 4,
+      state.titleFront, {size:14.5, weight:'bold', anchor:'middle', ls:'1.6'}));
+  }
+
+  /* SIDE ELEVATION */
+  {
+    const X = v => txS + v*s;
+    const Y = v => ty1 + v*s;
+    let g = '';
+
+    g += R(X(0), Y(0), oD*s, oH*s, 2.2);
+    g += L(X(0), Y(t), X(oD), Y(t), 1.2);
+    g += L(X(0), Y(oH-t), X(oD), Y(oH-t), 1.2);
+
+    if (legH > 0){
+      g += R(X(legInset-legD/2), Y(oH), legD*s, legH*s, 1.8);
+      g += R(X(oD-legInset-legD/2), Y(oH), legD*s, legH*s, 1.8);
+      g += L(X(-52), Y(oH+legH), X(oD+52), Y(oH+legH), 2.2);
+    } else {
+      g += L(X(-52), Y(oH), X(oD+52), Y(oH), 2.2);
+    }
+
+    g += L(X(-62), Y(0)-68, X(0)-14, Y(0)-68, 1.2) + arrowR(X(0)-6, Y(0)-68);
+    g += T(X(-66), Y(0)-64, 'FRONT', {size:11, anchor:'end'});
+    g += L(X(oD)+62, Y(0)-68, X(oD)+14, Y(0)-68, 1.2) + arrowL(X(oD)+6, Y(0)-68);
+    g += T(X(oD)+66, Y(0)-64, 'BACK', {size:11});
+
+    g += EXT(X(0), Y(0), X(0), Y(0)-40);
+    g += EXT(X(oD), Y(0), X(oD), Y(0)-40);
+    g += dimH(X(0), X(oD), Y(0)-34, disp(oD));
+
+    g += EXT(X(0), Y(0), X(0)-52, Y(0));
+    g += EXT(X(0), Y(oH), X(0)-52, Y(oH));
+    g += dimV(Y(0), Y(oH), X(0)-46, disp(oH));
+
+    if (legH > 0){
+      const lx = X(legInset + legD/2) + 32;
+      g += EXT(X(legInset+legD/2), Y(oH), lx+10, Y(oH));
+      g += EXT(X(legInset+legD/2), Y(oH+legH), lx+10, Y(oH+legH));
+      g += dimV(Y(oH), Y(oH+legH), lx, disp(legH));
+    }
+
+    P.push(g);
+    P.push(T(cells.side.x + cells.side.w/2, cells.side.y + cells.side.h - 4,
+      state.titleSide, {size:14.5, weight:'bold', anchor:'middle', ls:'1.6'}));
+  }
+
+  /* TOP PLAN */
+  {
+    const X = v => txT + v*s;
+    const Y = v => ty2 + v*s;
+    let g = '';
+
+    g += R(X(0), Y(0), oW*s, oD*s, 2.2);
+    g += R(X(0), Y(0), t*s, oD*s, 0, null, 'url(#hatch)');
+    g += R(X(oW-t), Y(0), t*s, oD*s, 0, null, 'url(#hatch)');
+    g += L(X(t), Y(0), X(t), Y(oD), 1, '8 5');
+    g += L(X(oW-t), Y(0), X(oW-t), Y(oD), 1, '8 5');
+
+    g += screwMark(X(screwX1), Y(screwY1));
+    g += screwMark(X(screwX1), Y(screwY2));
+    g += screwMark(X(screwX2), Y(screwY1));
+    g += screwMark(X(screwX2), Y(screwY2));
+
+    g += T(X(screwX2)+14, Y(screwY1)-12, 'S1 ×4', {size:11, weight:'bold'});
+
+    g += L(X(oW/2)-34, Y(oD)+44, X(oW/2)+30, Y(oD)+44, 1.2) + arrowR(X(oW/2)+30, Y(oD)+44);
+    g += T(X(oW/2)+36, Y(oD)+48, 'FRONT', {size:11});
+
+    g += EXT(X(0), Y(0), X(0), Y(0)-40);
+    g += EXT(X(oW), Y(0), X(oW), Y(0)-40);
+    g += dimH(X(0), X(oW), Y(0)-34, disp(oW));
+
+    g += EXT(X(0), Y(0), X(0)-52, Y(0));
+    g += EXT(X(0), Y(oD), X(0)-52, Y(oD));
+    g += dimV(Y(0), Y(oD), X(0)-46, disp(oD));
+
+    /* Screw position chain — front offset + between-screw spacing */
+    const rx1 = X(oW) + 28;
+    const rx2 = X(oW) + 74;
+    g += EXT(X(oW), Y(0), rx2+10, Y(0));
+    g += EXT(X(oW), Y(screwY1), rx2+10, Y(screwY1));
+    g += EXT(X(oW), Y(screwY2), rx2+10, Y(screwY2));
+    g += EXT(X(oW), Y(oD), rx2+10, Y(oD));
+    g += dimV(Y(0), Y(screwY1), rx1, disp(screwY1), {right:true});
+    g += dimV(Y(screwY1), Y(screwY2), rx2, disp(screwY2-screwY1), {right:true});
+
+    g += L(X(screwX1)+6, Y(screwY1)-6, X(oW)+26, Y(0)-26, 0.8);
+    g += C(X(screwX1), Y(screwY1), 2, 1);
+    g += T(X(oW)+30, Y(0)-22, 'SCREW CENTRED IN', {size:11});
+    g += T(X(oW)+30, Y(0)-8, 'SIDE PANEL (t/2 = ' + disp(t/2) + ')', {size:11});
+
+    g += T(X(0), Y(0)-56, 'DOTTED / HATCHED = SIDE PANEL BELOW', {size:11});
+
+    P.push(g);
+    P.push(T(cells.top.x + cells.top.w/2, cells.top.y + cells.top.h - 4,
+      state.titleTop, {size:14.5, weight:'bold', anchor:'middle', ls:'1.6'}));
+  }
+
+  /* BOTTOM PLAN */
+  {
+    const X = v => txB + v*s;
+    const Y = v => ty2 + v*s;
+    let g = '';
+
+    g += R(X(0), Y(0), oW*s, oD*s, 2.2);
+    g += R(X(0), Y(0), t*s, oD*s, 0, null, 'url(#hatch)');
+    g += R(X(oW-t), Y(0), t*s, oD*s, 0, null, 'url(#hatch)');
+    g += L(X(t), Y(0), X(t), Y(oD), 1, '8 5');
+    g += L(X(oW-t), Y(0), X(oW-t), Y(oD), 1, '8 5');
+
+    const legPts = [
+      [legInset, legInset],
+      [oW-legInset, legInset],
+      [legInset, oD-legInset],
+      [oW-legInset, oD-legInset]
+    ];
+    legPts.forEach(function(p){
+      const px = X(p[0]), py = Y(p[1]);
+      g += C(px, py, (legD/2)*s, 2);
+      g += L(px-18, py, px+18, py, 0.6);
+      g += L(px, py-18, px, py+18, 0.6);
+    });
+
+    g += screwMark(X(screwX1), Y(screwY1));
+    g += screwMark(X(screwX1), Y(screwY2));
+    g += screwMark(X(screwX2), Y(screwY1));
+    g += screwMark(X(screwX2), Y(screwY2));
+
+    g += T(X(screwX2)+14, Y(screwY1)-12, 'S2 ×4', {size:11, weight:'bold'});
+
+    g += EXT(X(0), Y(0), X(0), Y(0)-40);
+    g += EXT(X(oW), Y(0), X(oW), Y(0)-40);
+    g += dimH(X(0), X(oW), Y(0)-34, disp(oW));
+
+    g += EXT(X(0), Y(0), X(0)-52, Y(0));
+    g += EXT(X(0), Y(oD), X(0)-52, Y(oD));
+    g += dimV(Y(0), Y(oD), X(0)-46, disp(oD));
+
+    const by = Y(oD) + 32;
+    g += EXT(X(0), Y(oD), X(0), by+6);
+    g += EXT(X(legInset), Y(oD-legInset), X(legInset), by+6);
+    g += EXT(X(oW-legInset), Y(oD-legInset), X(oW-legInset), by+6);
+    g += EXT(X(oW), Y(oD), X(oW), by+6);
+    g += dimH(X(0), X(legInset), by, disp(legInset));
+    g += dimH(X(oW-legInset), X(oW), by, disp(legInset));
+
+    g += L(X(oW-legInset)+20, Y(oD-legInset)+20, X(oW)+24, Y(oD)+50, 0.8);
+    g += C(X(oW-legInset), Y(oD-legInset), 2, 1);
+    g += T(X(oW)+28, Y(oD)+54, 'LEG Ø' + disp(legD) + ' × ' + disp(legH), {size:11.5});
+
+    g += T(X(0), Y(0)-56, 'BOTTOM VIEW — ORIENTATION MIRRORED', {size:11});
+
+    P.push(g);
+    P.push(T(cells.bottom.x + cells.bottom.w/2, cells.bottom.y + cells.bottom.h - 4,
+      state.titleBottom, {size:14.5, weight:'bold', anchor:'middle', ls:'1.6'}));
+  }
+
+  /* SCHEDULE */
+  {
+    const bx = 20, by = 1272, bw = 610, bh = 210;
+    let g = '';
+    g += R(bx, by, bw, bh, 1.5);
+    g += L(bx, by+30, bx+bw, by+30, 1.5);
+    g += T(bx+14, by+21, 'SCREW & LEG SCHEDULE', {size:12.5, weight:'bold', ls:'1.2'});
+
+    const rows = [
+      ['S1', '4 × TOP SCREW'],
+      ['',   'CENTRED IN SIDE-PANEL THICKNESS (t/2 = ' + disp(t/2) + ' ' + unitAbbr() + ')'],
+      ['',   'FRONT OFFSET ' + disp(screwY1) + ' ' + unitAbbr() +
+             ' · SPACING ' + disp(spacing) + ' ' + unitAbbr()],
+      ['S2', '4 × BOTTOM SCREW'],
+      ['',   'SAME X / Y POSITIONS AS S1, MIRRORED ON THE BOTTOM PANEL'],
+      ['L',  '4 × LEG — Ø' + disp(legD) + ' × ' + disp(legH) + ' ' + unitAbbr() + ' HIGH'],
+      ['',   'CENTRES ' + disp(legInset) + ' ' + unitAbbr() + ' FROM OUTER EDGES'],
+      ['',   'LEGS REST ON THE TOP FACE OF THE MODULE BELOW WHEN STACKED']
+    ];
+
+    let yy = by + 52;
+    rows.forEach(function(r){
+      if (r[0]) g += T(bx+16, yy, r[0], {size:11.5, weight:'bold'});
+      g += T(bx+48, yy, r[1], {size:11});
+      yy += 19;
+    });
+
+    P.push(g);
+  }
+
+  /* CUT LIST */
+  {
+    const bx = 650, by = 1272, bw = 570, bh = 210;
+    let g = '';
+    g += R(bx, by, bw, bh, 1.5);
+    g += L(bx, by+30, bx+bw, by+30, 1.5);
+    g += T(bx+14, by+21, 'CUT LIST — ' + disp(t) + ' ' + unitAbbr() + ' PLYWOOD', {size:12.5, weight:'bold', ls:'1.2'});
+
+    const cx = [bx+16, bx+64, bx+318, bx+368];
+    const header = ['ITEM','PART','QTY','SIZE (' + unitAbbr() + ')'];
+
+    let yy = by + 52;
+    header.forEach(function(h,i){
+      g += T(cx[i], yy, h, {size:11, weight:'bold'});
+    });
+    g += L(bx+10, yy+7, bx+bw-10, yy+7, 0.8);
+
+    const rows = [
+      ['1','TOP PANEL',   '1', disp(oW)+' × '+disp(oD)+' × '+disp(t)],
+      ['2','BOTTOM PANEL','1', disp(oW)+' × '+disp(oD)+' × '+disp(t)],
+      ['3','SIDE PANEL',  '2', disp(oD)+' × '+disp(ch)+' × '+disp(t)],
+      ['4','LEG (DOWEL)', '4', 'Ø'+disp(legD)+' × '+disp(legH)]
+    ];
+
+    yy += 26;
+    rows.forEach(function(r){
+      r.forEach(function(c,i){
+        g += T(cx[i], yy, c, {size:11});
+      });
+      yy += 22;
+    });
+
+    g += L(bx+10, yy-8, bx+bw-10, yy-8, 0.8);
+    g += T(bx+16, yy+12, 'YIELD: 2 UNITS PER 1220 × 2440 MM SHEET', {size:11, weight:'bold'});
+    g += T(bx+16, yy+30,
+      'ALL EDGES TO BE SANDED 120 / 220 GRIT. APPLY CLEAR FINISH ×2 COATS.',
+      {size:10.5});
+
+    P.push(g);
+  }
+
+  document.getElementById('dwg').innerHTML = P.join('');
+}
+
+/* ============================================================
+   CONTROL PANEL
+   ============================================================ */
+const CONTROLS = [
+  {key:'cavityW', label:'Cavity width (X)',  min:150, max:700, unit:'mm'},
+  {key:'cavityD', label:'Cavity depth (Y)',  min:150, max:700, unit:'mm'},
+  {key:'cavityH', label:'Cavity height (Z)', min:100, max:700, unit:'mm'},
+  {key:'legD',    label:'Leg diameter',      min:15,  max:120, unit:'mm'},
+  {key:'legH',    label:'Leg height',        min:0,   max:250, unit:'mm'},
+  {key:'screwSpacing', label:'Screw spacing', min:20, max:600, unit:'mm', note:'distance between the two screws, measured along the depth'}
+];
+
+const PLY_PRESETS = [
+  {v:19.05, l:'3/4 in — 19.05 mm  (Home Depot birch)'},
+  {v:12.70, l:'1/2 in — 12.70 mm'},
+  {v:25.40, l:'1 in — 25.40 mm'},
+  {v:18.00, l:'18 mm — metric ply'},
+  {v:19.00, l:'19 mm — metric ply'}
+];
+
+const LABEL_FIELDS = [
+  {id:'label-hdr', key:'header',      label:'Header'},
+  {id:'label-sub', key:'subheader',   label:'Sub-header'},
+  {id:'label-ft',  key:'titleFront',  label:'Front view title'},
+  {id:'label-st',  key:'titleSide',   label:'Side view title'},
+  {id:'label-tt',  key:'titleTop',    label:'Top view title'},
+  {id:'label-bt',  key:'titleBottom', label:'Bottom view title'}
+];
+
+function buildPanel(){
+  const panel = document.getElementById('panel');
+  let h = '';
+
+  h += '<h1 class="panel-title">Parameters</h1>';
+  h += '<p class="panel-sub">Adjust live — drawing regenerates instantly</p>';
+
+  /* units */
+  h += '<div class="unit-row">' +
+         '<label for="unit-select">Units</label>' +
+         '<select id="unit-select">' +
+           '<option value="mm"' + (state.units==='mm'?' selected':'') + '>Millimetres (mm)</option>' +
+           '<option value="in"' + (state.units==='in'?' selected':'') + '>Inches (in) — fractions ok</option>' +
+         '</select>' +
+       '</div>';
+
+  /* plywood */
+  h += '<div class="ctl">' +
+         '<div class="ctl-head"><span>Plywood thickness</span>' +
+         '<span class="val" id="ply-val"></span></div>' +
+         '<select id="ply-preset">';
+  PLY_PRESETS.forEach(function(p){
+    h += '<option value="' + p.v + '"' + (Math.abs(p.v - state.ply) < 0.001 ? ' selected' : '') + '>' +
+         p.l + '</option>';
+  });
+  h += '<option value="custom">Custom…</option></select>' +
+       '<div class="ctl-row" style="margin-top:8px">' +
+         '<input type="range" id="ply-range" min="6" max="40" step="0.05" value="' + state.ply + '">' +
+         '<input class="num-inp" type="text" inputmode="text" id="ply-num" value="">' +
+       '</div></div>';
+
+  /* numeric */
+  CONTROLS.forEach(function(c){
+    h += '<div class="ctl">' +
+           '<div class="ctl-head"><span>' + c.label + '</span>' +
+           '<span class="val" id="' + c.key + '-val"></span></div>' +
+           '<div class="ctl-row">' +
+             '<input type="range" id="' + c.key + '-range" min="' + c.min + '" max="' + c.max +
+               '" step="1" value="' + state[c.key] + '">' +
+             '<input class="num-inp" type="text" inputmode="text" id="' + c.key + '-num" value="">' +
+           '</div>' +
+           (c.note ? '<div class="field-note" id="' + c.key + '-note">' + c.note + '</div>' : '') +
+         '</div>';
+  });
+
+  h += '<div class="section">Computed</div>';
+  h += '<div class="readout" id="readout"></div>';
+
+  h += '<div class="btn-row">' +
+         '<button class="action" id="btn-reset">Reset</button>' +
+         '<button class="action" id="btn-print">Print / PDF</button>' +
+       '</div>';
+  h += '<div class="btn-row">' +
+         '<button class="action" id="btn-share">Copy Share Link</button>' +
+       '</div>';
+
+  h += '<div class="section">Labels</div>';
+  LABEL_FIELDS.forEach(function(f){
+    h += '<div class="ctl">' +
+           '<div class="ctl-head"><span>' + f.label + '</span></div>' +
+           '<input class="txt" type="text" id="' + f.id + '" value="' + escAttr(state[f.key]) + '">' +
+         '</div>';
+  });
+
+  h += '<div class="hint">' +
+         'Parameters are mirrored in the URL. Share the link to restore the exact drawing.' +
+         '<br><br>' +
+         '<code>?u=</code>mm|in · <code>?cw=</code> <code>?cd=</code> <code>?ch=</code> cavity<br>' +
+         '<code>?t=</code> ply · <code>?ld=</code> leg Ø · <code>?lh=</code> leg H<br>' +
+         '<code>?ss=</code> screw spacing<br>' +
+         '<code>?h=</code> <code>?sh=</code> header · <code>?ft=</code> <code>?st=</code> <code>?tt=</code> <code>?bt=</code> titles' +
+       '</div>' +
+       '<div class="url-length" id="url-length">' +
+         '<span>URL length</span><span class="num">—</span>' +
+       '</div>';
+
+  panel.innerHTML = h;
+  wirePanel();
+}
+
+function wirePanel(){
+  /* numeric sliders + inputs (includes screwSpacing) */
+  ['cavityW','cavityD','cavityH','legD','legH','screwSpacing'].forEach(function(k){
+    const r = document.getElementById(k + '-range');
+    const n = document.getElementById(k + '-num');
+    if (r) r.addEventListener('input', function(){
+      state[k] = parseFloat(r.value);
+      sync();
+    });
+    if (n) n.addEventListener('change', function(){
+      const v = parseInput(n.value);
+      if (isFinite(v)) state[k] = v;
+      sync();
+    });
+  });
+
+  /* plywood */
+  const pr = document.getElementById('ply-range');
+  const pn = document.getElementById('ply-num');
+  const ps = document.getElementById('ply-preset');
+
+  function setPly(v){
+    state.ply = clampNum(v, 6, 40);
+    sync();
+  }
+
+  if (pr) pr.addEventListener('input', function(){ setPly(parseFloat(pr.value)); });
+  if (pn) pn.addEventListener('change', function(){
+    const v = parseInput(pn.value);
+    if (isFinite(v)) setPly(v); else sync();
+  });
+  if (ps) ps.addEventListener('change', function(){
+    if (ps.value === 'custom') return;
+    setPly(parseFloat(ps.value));
+  });
+
+  /* units */
+  const us = document.getElementById('unit-select');
+  if (us) us.addEventListener('change', function(){
+    state.units = us.value;
+    sync();
+  });
+
+  /* labels */
+  LABEL_FIELDS.forEach(function(f){
+    const el = document.getElementById(f.id);
+    if (el) el.addEventListener('input', function(){
+      state[f.key] = el.value;
+      render();
+      scheduleURLWrite();
+    });
+  });
+
+  /* buttons */
+  const btnR = document.getElementById('btn-reset');
+  if (btnR) btnR.addEventListener('click', function(){
+    Object.assign(state, DEFAULTS);
+    buildPanel();
+    sync();
+  });
+
+  const btnP = document.getElementById('btn-print');
+  if (btnP) btnP.addEventListener('click', function(){ window.print(); });
+
+  const btnS = document.getElementById('btn-share');
+  if (btnS) btnS.addEventListener('click', function(){
+    const url = window.location.href;
+    const done = function(){
+      const old = btnS.textContent;
+      btnS.textContent = 'Copied!';
+      btnS.disabled = true;
+      setTimeout(function(){
+        btnS.textContent = old;
+        btnS.disabled = false;
+      }, 1400);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(done).catch(function(){ fallbackCopy(url, done); });
+    } else {
+      fallbackCopy(url, done);
+    }
+  });
+}
+
+function fallbackCopy(text, done){
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); done(); } catch(e){ /* ignore */ }
+  document.body.removeChild(ta);
+}
+
+/* ============================================================
+   SYNC / READOUT
+   ============================================================ */
+function sync(){
+  /* ---- screw spacing constraint (must run before render) ---- */
+  if (!isValidSpacing(state.screwSpacing)){
+    state.screwSpacing = fallbackSpacing();
+  }
+
+  /* numeric controls */
+  ['cavityW','cavityD','cavityH','legD','legH','screwSpacing'].forEach(function(k){
+    const r = document.getElementById(k + '-range');
+    const n = document.getElementById(k + '-num');
+    const l = document.getElementById(k + '-val');
+    if (r && document.activeElement !== r) r.value = state[k];
+    if (n && document.activeElement !== n) n.value = formatValue(state[k]);
+    if (l) l.textContent = formatValue(state[k]) + ' ' + unitLower();
+  });
+
+  /* screw spacing helper note — show allowable range */
+  const note = document.getElementById('screwSpacing-note');
+  if (note){
+    const lim = spacingLimits();
+    note.textContent = 'distance between the two screws · allowed ' +
+                       formatValue(lim.min) + '–' + formatValue(lim.max) + ' ' + unitLower();
+    note.classList.remove('warn');
+  }
+
+  const pr = document.getElementById('ply-range');
+  const pn = document.getElementById('ply-num');
+  const pl = document.getElementById('ply-val');
+  if (pr && document.activeElement !== pr) pr.value = state.ply;
+  if (pn && document.activeElement !== pn) pn.value = formatValue(state.ply);
+  if (pl) pl.textContent = formatValue(state.ply) + ' ' + unitLower();
+
+  /* ply preset select */
+  const ps = document.getElementById('ply-preset');
+  if (ps){
+    const match = PLY_PRESETS.find(function(p){ return Math.abs(p.v - state.ply) < 0.001; });
+    ps.value = match ? String(match.v) : 'custom';
+  }
+
+  /* unit select */
+  const us = document.getElementById('unit-select');
+  if (us) us.value = state.units;
+
+  render();
+  updateReadout();
+  scheduleURLWrite();
+}
+
+function updateReadout(){
+  const t  = state.ply;
+  const cw = state.cavityW, cd = state.cavityD, ch = state.cavityH;
+  const oW = cw + 2*t, oD = cd + 2*t, oH = ch + 2*t;
+  const legH = Math.max(0, state.legH);
+  const spacing = resolvedSpacing();
+  const screwY1 = (oD - spacing) / 2;
+
+  const el = document.getElementById('readout');
+  if (!el) return;
+
+  const u = ' ' + unitLower();
+  const row = (k, v) => '<div><span class="k">' + k + '</span><span class="v">' + v + '</span></div>';
+
+  el.innerHTML =
+    row('Exterior W × D × H', formatValue(oW) + ' × ' + formatValue(oD) + ' × ' + formatValue(oH) + u) +
+    row('Interior cavity',    formatValue(cw) + ' × ' + formatValue(cd) + ' × ' + formatValue(ch) + u) +
+    row('Overall height + legs', formatValue(oH + legH) + u) +
+    row('1 module stack pitch', formatValue(oH + legH) + u) +
+    row('4-module stack height', formatValue((oH + legH) * 4) + u) +
+    row('Plywood thickness',  formatValue(t) + u) +
+    row('Leg',                'Ø' + formatValue(state.legD) + ' × ' + formatValue(legH) + u) +
+    row('Screw spacing',      formatValue(spacing) + u) +
+    row('Screw front offset', formatValue(screwY1) + u);
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+readURLParams();
+buildPanel();
+sync();
+writeURLParams();
+updateURLLength();
+</script>
+</body>
+</html>
