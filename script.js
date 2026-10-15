@@ -447,7 +447,7 @@ function render(){
     }
 
     P.push(g);
-    P.push(T(cells.front.x + cells.front.w/2, cells.front.y + cells.front.h - 4,
+    P.push(T(cells.front.x + cells.front.w/2, Y(0) - 95,
       state.titleFront, {size:14.5, weight:'bold', anchor:'middle', ls:'1.6'}));
   }
 
@@ -490,7 +490,7 @@ function render(){
     }
 
     P.push(g);
-    P.push(T(cells.side.x + cells.side.w/2, cells.side.y + cells.side.h - 4,
+    P.push(T(cells.side.x + cells.side.w/2, Y(0) - 95,
       state.titleSide, {size:14.5, weight:'bold', anchor:'middle', ls:'1.6'}));
   }
 
@@ -512,9 +512,6 @@ function render(){
     g += screwMark(X(screwX2), Y(screwY2));
 
     g += T(X(screwX2)+14, Y(screwY1)-12, 'S1 ×4', {size:11, weight:'bold'});
-
-    g += L(X(oW/2)-34, Y(oD)+44, X(oW/2)+30, Y(oD)+44, 1.2) + arrowR(X(oW/2)+30, Y(oD)+44);
-    g += T(X(oW/2)+36, Y(oD)+48, 'FRONT', {size:11});
 
     g += EXT(X(0), Y(0), X(0), Y(0)-40);
     g += EXT(X(oW), Y(0), X(oW), Y(0)-40);
@@ -542,7 +539,7 @@ function render(){
     g += T(X(0), Y(0)-56, 'DOTTED / HATCHED = SIDE PANEL BELOW', {size:11});
 
     P.push(g);
-    P.push(T(cells.top.x + cells.top.w/2, cells.top.y + cells.top.h - 4,
+    P.push(T(cells.top.x + cells.top.w/2, Y(0) - 95,
       state.titleTop, {size:14.5, weight:'bold', anchor:'middle', ls:'1.6'}));
   }
 
@@ -601,7 +598,7 @@ function render(){
     g += T(X(0), Y(0)-56, 'BOTTOM VIEW — ORIENTATION MIRRORED', {size:11});
 
     P.push(g);
-    P.push(T(cells.bottom.x + cells.bottom.w/2, cells.bottom.y + cells.bottom.h - 4,
+    P.push(T(cells.bottom.x + cells.bottom.w/2, Y(0) - 95,
       state.titleBottom, {size:14.5, weight:'bold', anchor:'middle', ls:'1.6'}));
   }
 
