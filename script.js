@@ -8,21 +8,23 @@ const MONTHS = ['January','February','March','April','May','June',
 
 const MM_PER_INCH = 25.4;
 const MATERIALS = [
-  {value:'plywood', label:'Plywood'},
-  {value:'solid-wood', label:'Solid wood'},
-  {value:'engineered-wood', label:'Engineered wood'}
+  {value:'alexandria-quarter-2x4', label:'Alexandria birch handy panel — 1/4 in, 2 × 4 ft', category:'Birch plywood', thicknessMm:6.35, sheetWidthMm:609.6, sheetLengthMm:1219.2, priceCad:18.76, priceSource:'User-provided Home Depot screenshot, 2026-10-15', url:'https://www.homedepot.ca/search?q=Alexandria%201%2F4%20birch%20plywood%202%20x%204'},
+  {value:'metrie-quarter-4x8', label:'Metrie sanded birch plywood — 1/4 in, 4 × 8 ft', category:'Birch plywood', thicknessMm:6.35, sheetWidthMm:1219.2, sheetLengthMm:2438.4, priceCad:36.98, priceSource:'User-provided Home Depot screenshot, 2026-10-15', url:'https://www.homedepot.ca/search?q=Metrie%201%2F4%20sanded%20birch%20plywood%204%20x%208'},
+  {value:'metrie-half-4x8', label:'Metrie sanded birch plywood — 1/2 in, 4 × 8 ft', category:'Birch plywood', thicknessMm:12.7, sheetWidthMm:1219.2, sheetLengthMm:2438.4, priceCad:52.98, priceSource:'User-provided Home Depot screenshot, 2026-10-15', url:'https://www.homedepot.ca/search?q=Metrie%201%2F2%20sanded%20birch%20plywood%204%20x%208'},
+  {value:'columbia-three-quarter-2x4', label:'Columbia birch plywood — 3/4 in, 2 × 4 ft', category:'Birch plywood', thicknessMm:19.05, sheetWidthMm:609.6, sheetLengthMm:1219.2, priceCad:40.74, priceSource:'User-provided Home Depot screenshot, 2026-10-15', url:'https://www.homedepot.ca/search?q=Columbia%203%2F4%20birch%20plywood%202%20x%204'},
+  {value:'columbia-three-quarter-2x8', label:'Columbia birch plywood — 3/4 in, 2 × 8 ft', category:'Birch plywood', thicknessMm:19.05, sheetWidthMm:609.6, sheetLengthMm:2438.4, priceCad:72.75, priceSource:'User-provided Home Depot screenshot, 2026-10-15', url:'https://www.homedepot.ca/search?q=Columbia%203%2F4%20birch%20plywood%202%20x%208'}
 ];
 
 /* default screw spacing (mm) — 50% of the default outer depth
-   (default cavityD = 340, ply = 19.05  →  oD = 378.1) */
-const SCREW_SPACING_DEFAULT = 189.05;
+   (default cavityD = 340, ply = 12.7  →  oD = 365.4) */
+const SCREW_SPACING_DEFAULT = 182.7;
 
 const DEFAULTS = {
   cavityW: 330,
   cavityD: 340,
   cavityH: 340,
-  material: 'plywood',
-  ply:     19.05,
+  material: 'metrie-half-4x8',
+  ply:     12.7,
   legD:    40,
   legH:    10,
   screwSpacing: SCREW_SPACING_DEFAULT,
@@ -64,7 +66,58 @@ const state = Object.assign({}, DEFAULTS);
 
 function materialLabel(){
   const material = MATERIALS.find(function(item){ return item.value === state.material; });
-  return material ? material.label : state.material;
+  return material ? material.label : MATERIALS[0].label;
+}
+
+function selectedMaterial(){
+  return MATERIALS.find(function(item){ return item.value === state.material; }) || MATERIALS[0];
+}
+
+function panelAreaMm2(){
+  return panelAreaBreakdownMm2().total;
+}
+
+function panelAreaBreakdownMm2(){
+  const t = state.ply;
+  const outerW = state.cavityW + 2*t;
+  const outerD = state.cavityD + 2*t;
+  return {
+    topBottom: 2*outerW*outerD,
+    sides: 2*outerD*state.cavityH,
+    total: 2*outerW*outerD + 2*outerD*state.cavityH
+  };
+}
+
+function sheetYield(){
+  const material = selectedMaterial();
+  return Math.floor((material.sheetWidthMm * material.sheetLengthMm) / panelAreaMm2());
+}
+
+function sheetWasteMm2(){
+  const material = selectedMaterial();
+  const yieldCount = sheetYield();
+  if (yieldCount === 0) return null;
+  return material.sheetWidthMm * material.sheetLengthMm - yieldCount * panelAreaMm2();
+}
+
+function sheetWastePercent(){
+  const material = selectedMaterial();
+  const sheetArea = material.sheetWidthMm * material.sheetLengthMm;
+  const waste = sheetWasteMm2();
+  return waste === null ? null : waste / sheetArea * 100;
+}
+
+function formatArea(areaMm2){
+  const squareMmPerUnit = state.units === 'in' ? MM_PER_INCH * MM_PER_INCH : 1;
+  return fmt(areaMm2 / squareMmPerUnit) + (state.units === 'in' ? ' in²' : ' mm²');
+}
+
+function materialCostPerUnit(){
+  const material = selectedMaterial();
+  const yieldCount = sheetYield();
+  if (material.priceCad === null || yieldCount === 0 ||
+      Math.abs(state.ply - material.thicknessMm) > 0.001) return null;
+  return material.priceCad / yieldCount;
 }
 
 /* ============================================================
@@ -179,9 +232,7 @@ function readURLParams(){
     if (v !== null) state[URL_TXT_KEYS[short]] = v;
   }
 
-  if (!MATERIALS.some(function(material){ return material.value === state.material; })){
-    state.material = DEFAULTS.material;
-  }
+  if (!MATERIALS.some(function(material){ return material.value === state.material; })) state.material = DEFAULTS.material;
 }
 
 function writeURLParams(){
@@ -406,7 +457,7 @@ function render(){
   P.push(
     T(40, 48, state.header, {size:22, weight:'bold', ls:'0.8'}),
     T(40, 70, state.subheader, {size:12.5, ls:'1'}),
-    T(40, 90, 'MATERIAL: ' + materialLabel().toUpperCase() + ' · THICKNESS: ' + disp(t) + ' ' + unitAbbr() + ' · JOINERY: SCREWS FROM TOP & BOTTOM FACES · OPEN BACK',
+    T(40, 90,     'MATERIAL: ' + selectedMaterial().category.toUpperCase() + ' · THICKNESS: ' + disp(t) + ' ' + unitAbbr() + ' · JOINERY: SCREWS FROM TOP & BOTTOM FACES · OPEN BACK',
       {size:11.5}),
     T(1200, 48, todayFormatted(), {size:12, anchor:'end', weight:'bold'}),
     T(1200, 68, 'UNITS: ' + unitAbbr(), {size:11, anchor:'end'}),
@@ -624,7 +675,7 @@ function render(){
     let g = '';
     g += R(bx, by, bw, bh, 1.5);
     g += L(bx, by+30, bx+bw, by+30, 1.5);
-    g += T(bx+14, by+21, 'SCREW & LEG SCHEDULE', {size:12.5, weight:'bold', ls:'1.2'});
+    g += T(bx+14, by+21, 'SCREW & LEG SCHEDULE', {size:12.5, weight:'bold'});
 
     const rows = [
       ['S1', '4 × TOP SCREW'],
@@ -654,7 +705,7 @@ function render(){
     let g = '';
     g += R(bx, by, bw, bh, 1.5);
     g += L(bx, by+30, bx+bw, by+30, 1.5);
-    g += T(bx+14, by+21, 'CUT LIST — ' + materialLabel().toUpperCase() + ' · ' + disp(t) + ' ' + unitAbbr() + ' THICK', {size:12.5, weight:'bold', ls:'1.2'});
+    g += T(bx+14, by+21, 'CUT LIST — ' + selectedMaterial().category.toUpperCase() + ' · ' + disp(t) + ' ' + unitAbbr() + ' THICK', {size:12.5, weight:'bold'});
 
     const cx = [bx+16, bx+64, bx+318, bx+368];
     const header = ['ITEM','PART','QTY','SIZE (' + unitAbbr() + ')'];
@@ -681,7 +732,11 @@ function render(){
     });
 
     g += L(bx+10, yy-8, bx+bw-10, yy-8, 0.8);
-    g += T(bx+16, yy+12, 'YIELD: 2 UNITS PER 1220 × 2440 MM SHEET', {size:11, weight:'bold'});
+    const material = selectedMaterial();
+    g += T(bx+16, yy+12,
+      'AREA-BASED YIELD: ' + sheetYield() + ' UNIT(S) PER ' +
+      formatValue(material.sheetWidthMm) + ' × ' + formatValue(material.sheetLengthMm) + ' ' + unitAbbr() + ' SHEET',
+      {size:11, weight:'bold'});
     g += T(bx+16, yy+30,
       'ALL EDGES TO BE SANDED 120 / 220 GRIT. APPLY CLEAR FINISH ×2 COATS.',
       {size:10.5});
@@ -705,11 +760,9 @@ const CONTROLS = [
 ];
 
 const PLY_PRESETS = [
-  {v:19.05, l:'3/4 in — 19.05 mm'},
-  {v:12.70, l:'1/2 in — 12.70 mm'},
-  {v:25.40, l:'1 in — 25.40 mm'},
-  {v:18.00, l:'18 mm'},
-  {v:19.00, l:'19 mm'}
+  {v:6.35, l:'1/4 in — 6.35 mm'},
+  {v:12.7, l:'1/2 in — 12.7 mm'},
+  {v:19.05, l:'3/4 in — 19.05 mm'}
 ];
 
 const LABEL_FIELDS = [
@@ -739,12 +792,12 @@ function buildPanel(){
 
   /* material */
   h += '<div class="ctl">' +
-         '<div class="ctl-head"><span>Material</span></div>' +
+         '<div class="ctl-head"><span>Plywood type</span></div>' +
          '<select id="material-select">';
   MATERIALS.forEach(function(material){
     h += '<option value="' + material.value + '"' +
          (state.material === material.value ? ' selected' : '') + '>' +
-         material.label + '</option>';
+         material.label + ' — $' + material.priceCad.toFixed(2) + ' CAD</option>';
   });
   h += '</select></div>';
 
@@ -851,6 +904,7 @@ function wirePanel(){
   const ms = document.getElementById('material-select');
   if (ms) ms.addEventListener('change', function(){
     state.material = ms.value;
+    state.ply = selectedMaterial().thicknessMm;
     sync();
   });
 
@@ -983,15 +1037,26 @@ function updateReadout(){
 
   el.innerHTML =
     row('Material',           materialLabel()) +
+    row('Listing thickness', formatValue(selectedMaterial().thicknessMm) + u) +
     row('Exterior W × D × H', formatValue(oW) + ' × ' + formatValue(oD) + ' × ' + formatValue(oH) + u) +
     row('Interior cavity',    formatValue(cw) + ' × ' + formatValue(cd) + ' × ' + formatValue(ch) + u) +
     row('Overall height + legs', formatValue(oH + legH) + u) +
     row('1 module stack pitch', formatValue(oH + legH) + u) +
     row('4-module stack height', formatValue((oH + legH) * 4) + u) +
-    row('Plywood thickness',  formatValue(t) + u) +
+    row('Material thickness', formatValue(t) + u) +
+    row('Sheet size', formatValue(selectedMaterial().sheetWidthMm) + ' × ' + formatValue(selectedMaterial().sheetLengthMm) + u) +
+    row('Sheet price', selectedMaterial().priceCad === null ? 'Not available' : '$' + selectedMaterial().priceCad.toFixed(2) + ' CAD') +
+    row('Home Depot', '<a href="' + selectedMaterial().url + '" target="_blank" rel="noopener">Search ' + materialLabel() + '</a>') +
+    row('Top / bottom panel area', formatArea(panelAreaBreakdownMm2().topBottom)) +
+    row('Side panel area', formatArea(panelAreaBreakdownMm2().sides)) +
+    row('Total panel surface area', formatArea(panelAreaMm2())) +
+    row('Estimated sheet yield', sheetYield() === 0 ? 'No full unit fits by area' : sheetYield() + ' unit(s), area-based') +
+    row('Estimated area left over', sheetWasteMm2() === null ? 'Not applicable' : formatArea(sheetWasteMm2()) + ' (' + fmt(sheetWastePercent()) + '%)') +
+    row('Estimated material cost / unit', materialCostPerUnit() === null ? 'Unavailable for current thickness' : '$' + materialCostPerUnit().toFixed(2) + ' CAD') +
     row('Leg',                'Ø' + formatValue(state.legD) + ' × ' + formatValue(legH) + u) +
     row('Screw spacing',      formatValue(spacing) + u) +
-    row('Screw front offset', formatValue(screwY1) + u);
+    row('Screw front offset', formatValue(screwY1) + u) +
+    '<div class="field-note">Area math and sheet yield are estimates; actual cut layout, kerf and offcuts may change usable yield. Cost per unit assumes a full sheet is shared across the estimated yield.</div>';
 }
 
 /* ============================================================
