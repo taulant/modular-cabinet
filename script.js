@@ -717,7 +717,7 @@ function render(){
     [screwX1,screwX2].forEach(function(x){
       [screwY1,screwY2].forEach(function(y){
         const p = topPoint(x,y);
-        g += screwMark(p.x,p.y,3.5);
+        g += screwMark(p.x,p.y,1.5);
       });
     });
 
