@@ -324,17 +324,19 @@ function readURLParams(){
 
 function writeURLParams(){
   const params = new URLSearchParams();
-  params.set('u', state.units);
+  if (state.units !== DEFAULTS.units) params.set('u', state.units);
 
   for (const short in URL_NUM_KEYS){
-    params.set(short, fmt(state[URL_NUM_KEYS[short]]));
+    const key = URL_NUM_KEYS[short];
+    if (state[key] !== DEFAULTS[key]) params.set(short, fmt(state[key]));
   }
   for (const short in URL_TXT_KEYS){
-    params.set(short, state[URL_TXT_KEYS[short]]);
+    const key = URL_TXT_KEYS[short];
+    if (state[key] !== DEFAULTS[key]) params.set(short, state[key]);
   }
 
   const qs = params.toString();
-  const url = window.location.pathname + '?' + qs + window.location.hash;
+  const url = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash;
   try { history.replaceState(null, '', url); } catch(e){ /* ignore */ }
 }
 
