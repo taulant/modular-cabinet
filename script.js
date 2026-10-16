@@ -16,6 +16,8 @@ const MATERIALS = [
 /* default screw spacing (mm) — 50% of the default outer depth
    (default cavityD = 340, ply = 12.7  →  oD = 365.4) */
 const SCREW_SPACING_DEFAULT = 182.7;
+// SVG page-coordinate offsets for manually positioning the isometric view.
+const ISO_VIEW_OFFSET = {x:0, y:0};
 
 const DEFAULTS = {
   cavityW: 330,
@@ -32,7 +34,7 @@ const DEFAULTS = {
   subheader: 'STACKABLE VINYL STORAGE',
   titleFront: 'FRONT',
   titleSide:  'RIGHT SIDE',
-  titleTop:   'TOP — SCREW POSITIONS',
+  titleTop:   'ISOMETRIC VIEW',
   titleBottom:'BOTTOM — LEG & SCREW POSITIONS'
 };
 
@@ -484,6 +486,20 @@ function todayFormatted(){
   return d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
 }
 
+function frontFaceGeometry(width, height, thickness){
+  return R(0,0,width,height,2.2) +
+         L(0,thickness,width,thickness,1.2) +
+         L(0,height-thickness,width,height-thickness,1.2) +
+         L(thickness,thickness,thickness,height-thickness,1.2) +
+         L(width-thickness,thickness,width-thickness,height-thickness,1.2);
+}
+
+function sideFaceGeometry(depth, height, thickness){
+  return R(0,0,depth,height,2.2,null,'#fff') +
+         L(0,thickness,depth,thickness,1.2) +
+         L(0,height-thickness,depth,height-thickness,1.2);
+}
+
 /* ============================================================
    RENDER
    ============================================================ */
@@ -525,11 +541,9 @@ function render(){
 
   const vh1 = oH + legH;
   const ty1 = cells.front.y + (cells.front.h - vh1*s)/2;
-  const ty2 = cells.top.y   + (cells.top.h   - oD*s)/2;
 
   const txF = cells.front.x  + (cells.front.w  - oW*s)/2;
   const txS = cells.side.x   + (cells.side.w   - oD*s)/2;
-  const txT = cells.top.x    + (cells.top.w    - oW*s)/2;
   const txB = cells.bottom.x + (cells.bottom.w - oW*s)/2;
 
   const P = [];
@@ -569,11 +583,8 @@ function render(){
     const Y = v => ty1 + v*s;
     let g = '';
 
-    g += R(X(0), Y(0), oW*s, oH*s, 2.2);
-    g += L(X(0), Y(t), X(oW), Y(t), 1.2);
-    g += L(X(0), Y(oH-t), X(oW), Y(oH-t), 1.2);
-    g += L(X(t), Y(t), X(t), Y(oH-t), 1.2);
-    g += L(X(oW-t), Y(t), X(oW-t), Y(oH-t), 1.2);
+    g += '<g transform="translate(' + txF + ' ' + ty1 + ')">' +
+         frontFaceGeometry(oW*s,oH*s,t*s) + '</g>';
 
     if (legH > 0){
       g += R(X(legInset-legD/2), Y(oH), legD*s, legH*s, 1.8);
@@ -622,9 +633,8 @@ function render(){
     const Y = v => ty1 + v*s;
     let g = '';
 
-    g += R(X(0), Y(0), oD*s, oH*s, 2.2);
-    g += L(X(0), Y(t), X(oD), Y(t), 1.2);
-    g += L(X(0), Y(oH-t), X(oD), Y(oH-t), 1.2);
+    g += '<g transform="translate(' + txS + ' ' + ty1 + ')">' +
+         sideFaceGeometry(oD*s,oH*s,t*s) + '</g>';
 
     if (legH > 0){
       g += R(X(legInset-legD/2), Y(oH), legD*s, legH*s, 1.8);
@@ -659,61 +669,70 @@ function render(){
       state.titleSide, {size:14.5, weight:'bold', anchor:'middle', ls:'1.6'}));
   }
 
-  /* TOP PLAN */
+  /* ISOMETRIC VIEW */
   {
-    const X = v => txT + v*s;
-    const Y = v => ty2 + v*s;
+    const cell = cells.top;
+    const angle = Math.PI / 6;
+    const cos = Math.cos(angle), sin = Math.sin(angle);
+    const projectedWidth = (oW + oD) * cos;
+    const projectedHeight = (oW + oD) * sin + oH;
+    const plot = {
+      x: cell.x + 30,
+      y: cell.y + 72,
+      w: cell.w - 60,
+      h: cell.h - 100
+    };
+    const isoScale = Math.min(plot.w / projectedWidth, plot.h / projectedHeight);
+    const cx = plot.x + plot.w/2 + ISO_VIEW_OFFSET.x;
+    const cy = plot.y + plot.h/2 + ISO_VIEW_OFFSET.y;
+    const frontTopLeftX = cx + (oD-oW)*cos*isoScale/2;
+    const frontTopLeftY = cy - projectedHeight*isoScale/2;
+    const frontMatrix = [
+      cos*isoScale, sin*isoScale, 0, isoScale,
+      frontTopLeftX - cos*oD*isoScale,
+      frontTopLeftY + sin*oD*isoScale
+    ];
+    const sideMatrix = [
+      -cos*isoScale, sin*isoScale, 0, isoScale,
+      frontTopLeftX + cos*oW*isoScale,
+      frontTopLeftY + sin*oW*isoScale
+    ];
+    const topMatrix = [
+      cos*isoScale, sin*isoScale, -cos*isoScale, sin*isoScale,
+      frontTopLeftX, frontTopLeftY
+    ];
     let g = '';
 
-    g += R(X(0), Y(0), oW*s, oD*s, 2.2);
-    g += R(X(0), Y(0), t*s, oD*s, 0, null, 'url(#hatch)');
-    g += R(X(oW-t), Y(0), t*s, oD*s, 0, null, 'url(#hatch)');
-    g += L(X(t), Y(0), X(t), Y(oD), 1, '8 5');
-    g += L(X(oW-t), Y(0), X(oW-t), Y(oD), 1, '8 5');
+    g += '<g transform="matrix(' + topMatrix.join(' ') + ')">' +
+         R(0,0,oW,oD,2.2,null,'#fff') + '</g>';
+    g += '<g transform="matrix(' + sideMatrix.join(' ') + ')">' +
+         sideFaceGeometry(oD,oH,t) + '</g>';
+    g += '<g transform="matrix(' + frontMatrix.join(' ') + ')">' +
+         frontFaceGeometry(oW,oH,t) + '</g>';
 
-    g += screwMark(X(screwX1), Y(screwY1));
-    g += screwMark(X(screwX1), Y(screwY2));
-    g += screwMark(X(screwX2), Y(screwY1));
-    g += screwMark(X(screwX2), Y(screwY2));
-
-    g += T(X(screwX2)+14, Y(screwY1)-12, 'S1 ×4', {size:11, weight:'bold'});
-
-    g += EXT(X(0), Y(0), X(0), Y(0)-40);
-    g += EXT(X(oW), Y(0), X(oW), Y(0)-40);
-    g += dimH(X(0), X(oW), Y(0)-34, disp(oW));
-
-    g += EXT(X(0), Y(0), X(0)-52, Y(0));
-    g += EXT(X(0), Y(oD), X(0)-52, Y(oD));
-    g += dimV(Y(0), Y(oD), X(0)-46, disp(oD));
-
-    /* Screw position chain — front offset + between-screw spacing */
-    const rx1 = X(oW) + 28;
-    const rx2 = X(oW) + 74;
-    g += EXT(X(oW), Y(0), rx2+10, Y(0));
-    g += EXT(X(oW), Y(screwY1), rx2+10, Y(screwY1));
-    g += EXT(X(oW), Y(screwY2), rx2+10, Y(screwY2));
-    g += EXT(X(oW), Y(oD), rx2+10, Y(oD));
-    g += dimV(Y(0), Y(screwY1), rx1, disp(screwY1), {right:true});
-    g += dimV(Y(screwY1), Y(screwY2), rx2, disp(screwY2-screwY1), {right:true});
-
-    g += L(X(screwX1)+6, Y(screwY1)-6, X(oW)+26, Y(0)-26, 0.8);
-    g += C(X(screwX1), Y(screwY1), 2, 1);
-    g += T(X(oW)+30, Y(0)-22, 'SCREW CENTRED IN', {size:11});
-    g += T(X(oW)+30, Y(0)-8, 'SIDE PANEL (t/2 = ' + disp(t/2) + ')', {size:11});
-
-    g += T(X(0), Y(0)-56, 'DOTTED / HATCHED = SIDE PANEL BELOW', {size:11});
+    const topPoint = (x,y) => ({
+      x: topMatrix[0]*x + topMatrix[2]*y + topMatrix[4],
+      y: topMatrix[1]*x + topMatrix[3]*y + topMatrix[5]
+    });
+    [screwX1,screwX2].forEach(function(x){
+      [screwY1,screwY2].forEach(function(y){
+        const p = topPoint(x,y);
+        g += screwMark(p.x,p.y,3.5);
+      });
+    });
 
     P.push(g);
-    P.push(T(cells.top.x + cells.top.w/2, Y(0) - 95,
+    P.push(T(cell.x + cell.w/2, cell.y + 28,
       state.titleTop, {size:14.5, weight:'bold', anchor:'middle', ls:'1.6'}));
   }
 
   /* BOTTOM PLAN */
   {
-    const bottomX = cells.bottom.x + (cells.bottom.w - oD*s)/2;
-    const bottomY = cells.bottom.y + (cells.bottom.h - oW*s)/2;
-    const X = v => bottomX + v*s;
-    const Y = v => bottomY + v*s;
+    const bottomScale = Math.min(s, (cells.bottom.h-150)/Math.max(oW,oD));
+    const bottomX = cells.bottom.x + (cells.bottom.w - oD*bottomScale)/2;
+    const bottomY = cells.bottom.y + 55;
+    const X = v => bottomX + v*bottomScale;
+    const Y = v => bottomY + v*bottomScale;
     let g = '';
 
     g += R(X(0), Y(0), oD*s, oW*s, 2.2);
@@ -730,7 +749,7 @@ function render(){
     ];
     legPts.forEach(function(p){
       const px = X(p[1]), py = Y(p[0]);
-      g += C(px, py, (legD/2)*s, 2);
+      g += C(px, py, (legD/2)*bottomScale, 2);
       g += L(px-18, py, px+18, py, 0.6);
       g += L(px, py-18, px, py+18, 0.6);
     });
@@ -751,7 +770,7 @@ function render(){
     g += dimV(Y(0), Y(oW), X(0)-46, disp(oW));
 
     const legLabelX = X(0) + 10;
-    const legLabelY = Y(0) - 54;
+    const legLabelY = Y(0) + 18;
     const legLabel = 'LEG Ø' + disp(legD) + ' × ' + disp(legH);
     const leaderX = legLabelX + 112;
     const leaderY = legLabelY + 3;
@@ -760,8 +779,17 @@ function render(){
     g += R(legLabelX-3, legLabelY-11, 116, 15, 0, null, '#fff');
     g += T(legLabelX, legLabelY, legLabel, {size:10.5});
 
+    const screwDimY = Y(oW) + 36;
+    const screwPoints = [0, screwY1, screwY2, oD];
+    screwPoints.forEach(function(depth){
+      g += EXT(X(depth), Y(oW), X(depth), screwDimY+6);
+    });
+    g += dimH(X(0), X(screwY1), screwDimY, disp(screwY1));
+    g += dimH(X(screwY1), X(screwY2), screwDimY, disp(screwY2-screwY1));
+    g += dimH(X(screwY2), X(oD), screwDimY, disp(oD-screwY2));
+
     P.push(g);
-    P.push(T(cells.bottom.x + cells.bottom.w/2, ty2 - 95,
+    P.push(T(cells.bottom.x + cells.bottom.w/2, cells.bottom.y + 28,
       state.titleBottom, {size:14.5, weight:'bold', anchor:'middle', ls:'1.6'}));
   }
 
@@ -810,7 +838,7 @@ function render(){
     g += T(legendX, legendY+19, 'SHEET ' + formatValue(material.sheetWidthMm) + ' × ' +
       formatValue(material.sheetLengthMm) + ' ' + unitAbbr(), {size:10});
     g += T(legendX, legendY+36, 'Layout includes 3.2 mm saw kerf.', {size:9.5});
-    g += T(legendX, legendY+52, 'Screws marked in plan views.', {size:9.5});
+    g += T(legendX, legendY+52, 'Screw locations shown in bottom view.', {size:9.5});
 
     P.push(g);
   }
@@ -888,7 +916,7 @@ const LABEL_FIELDS = [
   {id:'label-sub', key:'subheader',   label:'Sub-header'},
   {id:'label-ft',  key:'titleFront',  label:'Front view title'},
   {id:'label-st',  key:'titleSide',   label:'Side view title'},
-  {id:'label-tt',  key:'titleTop',    label:'Top view title'},
+  {id:'label-tt',  key:'titleTop',    label:'Isometric view title'},
   {id:'label-bt',  key:'titleBottom', label:'Bottom view title'}
 ];
 
