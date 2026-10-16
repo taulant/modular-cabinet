@@ -88,9 +88,79 @@ function panelAreaBreakdownMm2(){
   };
 }
 
-function sheetYield(){
+function makePanelRectangles(){
+  const t = state.ply;
+  const outerW = state.cavityW + 2*t;
+  const outerD = state.cavityD + 2*t;
+  return [
+    {width:outerW, height:outerD},
+    {width:outerW, height:outerD},
+    {width:outerD, height:state.cavityH},
+    {width:outerD, height:state.cavityH}
+  ].sort(function(a, b){
+    return Math.max(b.width, b.height) - Math.max(a.width, a.height);
+  });
+}
+
+function packCabinetRows(rows, rectangles, sheetWidth, sheetLength, kerf){
+  for (let i=0; i<rectangles.length; i++){
+    const piece = rectangles[i];
+    const row = rows.length ? rows[rows.length-1] : null;
+    const orientations = [
+      {width:piece.width+kerf, height:piece.height+kerf},
+      {width:piece.height+kerf, height:piece.width+kerf}
+    ].sort(function(a, b){ return a.height - b.height; });
+    let placed = false;
+
+    if (row){
+      for (let j=0; j<orientations.length; j++){
+        const choice = orientations[j];
+        if (row.usedWidth + choice.width <= sheetWidth + kerf &&
+            row.y + Math.max(row.height, choice.height) <= sheetLength + kerf){
+          row.usedWidth += choice.width;
+          row.height = Math.max(row.height, choice.height);
+          row.panelCount++;
+          placed = true;
+          break;
+        }
+      }
+    }
+
+    if (placed) continue;
+
+    const y = row ? row.y + row.height : 0;
+    for (let j=0; j<orientations.length; j++){
+      const choice = orientations[j];
+      if (choice.width <= sheetWidth + kerf && y + choice.height <= sheetLength + kerf){
+        rows.push({y:y, usedWidth:choice.width, height:choice.height, panelCount:1});
+        placed = true;
+        break;
+      }
+    }
+
+    if (!placed) return false;
+  }
+  return rows;
+}
+
+function sheetPackingEstimate(){
   const material = selectedMaterial();
-  return Math.floor((material.sheetWidthMm * material.sheetLengthMm) / panelAreaMm2());
+  const kerf = 3.2;
+  let rows = [];
+  let count = 0;
+  const pieces = makePanelRectangles();
+  while (count < 100){
+    const next = packCabinetRows(rows.map(function(row){ return Object.assign({}, row); }),
+      pieces, material.sheetWidthMm, material.sheetLengthMm, kerf);
+    if (!next) break;
+    rows = next;
+    count++;
+  }
+  return {cabinetCount:count, rows:rows};
+}
+
+function sheetYield(){
+  return sheetPackingEstimate().cabinetCount;
 }
 
 function sheetWasteMm2(){
@@ -734,7 +804,7 @@ function render(){
     g += L(bx+10, yy-8, bx+bw-10, yy-8, 0.8);
     const material = selectedMaterial();
     g += T(bx+16, yy+12,
-      'AREA-BASED YIELD: ' + sheetYield() + ' UNIT(S) PER ' +
+      'ESTIMATED PACKED YIELD: ' + sheetYield() + ' CABINET(S) PER ' +
       formatValue(material.sheetWidthMm) + ' × ' + formatValue(material.sheetLengthMm) + ' ' + unitAbbr() + ' SHEET',
       {size:11, weight:'bold'});
     g += T(bx+16, yy+30,
@@ -1050,13 +1120,14 @@ function updateReadout(){
     row('Top / bottom panel area', formatArea(panelAreaBreakdownMm2().topBottom)) +
     row('Side panel area', formatArea(panelAreaBreakdownMm2().sides)) +
     row('Total panel surface area', formatArea(panelAreaMm2())) +
-    row('Estimated sheet yield', sheetYield() === 0 ? 'No full unit fits by area' : sheetYield() + ' unit(s), area-based') +
-    row('Estimated area left over', sheetWasteMm2() === null ? 'Not applicable' : formatArea(sheetWasteMm2()) + ' (' + fmt(sheetWastePercent()) + '%)') +
+    row('Estimated sheet yield', sheetYield() === 0 ? 'Panels do not fit on one sheet' : sheetYield() + ' cabinet(s), packed layout estimate') +
+    row('Panel layout by row', sheetPackingEstimate().rows.map(function(row){ return row.panelCount; }).join(' + ') + ' panels') +
+    row('Estimated area left over', sheetWasteMm2() === null ? 'Not applicable' : formatArea(sheetWasteMm2()) + ' (' + fmt(sheetWastePercent()) + '%; includes kerf/offcuts)') +
     row('Estimated material cost / unit', materialCostPerUnit() === null ? 'Unavailable for current thickness' : '$' + materialCostPerUnit().toFixed(2) + ' CAD') +
     row('Leg',                'Ø' + formatValue(state.legD) + ' × ' + formatValue(legH) + u) +
     row('Screw spacing',      formatValue(spacing) + u) +
     row('Screw front offset', formatValue(screwY1) + u) +
-    '<div class="field-note">Area math and sheet yield are estimates; actual cut layout, kerf and offcuts may change usable yield. Cost per unit assumes a full sheet is shared across the estimated yield.</div>';
+    '<div class="field-note">Yield uses a 2D rectangle-packing estimate with 3.2 mm saw kerf and allows panel rotation. Actual cutting layout and offcuts may change usable yield; remaining area is estimated, not a cut plan.</div>';
 }
 
 /* ============================================================
