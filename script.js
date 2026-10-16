@@ -728,9 +728,9 @@ function render(){
 
   /* BOTTOM PLAN */
   {
-    const bottomScale = Math.min(s, (cells.bottom.h-150)/Math.max(oW,oD));
+    const bottomScale = Math.min(s, (cells.bottom.h-152)/Math.max(oW,oD));
     const bottomX = cells.bottom.x + (cells.bottom.w - oD*bottomScale)/2;
-    const bottomY = cells.bottom.y + 55;
+    const bottomY = cells.bottom.y + 100;
     const X = v => bottomX + v*bottomScale;
     const Y = v => bottomY + v*bottomScale;
     let g = '';
@@ -759,7 +759,8 @@ function render(){
     g += screwMark(X(screwY1), Y(screwX2));
     g += screwMark(X(screwY2), Y(screwX2));
 
-    g += T(X(screwY2)+14, Y(screwX2)-12, 'S2 ×4', {size:11, weight:'bold'});
+    g += T(X((screwY1+screwY2)/2), Y(oW/2), 'S2 ×4',
+      {size:11, weight:'bold', anchor:'middle'});
 
     g += EXT(X(0), Y(0), X(0), Y(0)-40);
     g += EXT(X(oD), Y(0), X(oD), Y(0)-40);
@@ -769,10 +770,10 @@ function render(){
     g += EXT(X(0), Y(oW), X(0)-52, Y(oW));
     g += dimV(Y(0), Y(oW), X(0)-46, disp(oW));
 
-    const legLabelX = X(0) + 10;
-    const legLabelY = Y(0) + 18;
+    const legLabelX = X(legInset + legD/2) + 12;
+    const legLabelY = Y(0) + 40;
     const legLabel = 'LEG Ø' + disp(legD) + ' × ' + disp(legH);
-    const leaderX = legLabelX + 112;
+    const leaderX = legLabelX - 4;
     const leaderY = legLabelY + 3;
     g += L(X(legInset), Y(legInset), leaderX, leaderY, 0.9);
     g += C(X(legInset), Y(legInset), 2, 1);
