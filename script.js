@@ -93,10 +93,10 @@ function makePanelRectangles(){
   const outerW = state.cavityW + 2*t;
   const outerD = state.cavityD + 2*t;
   return [
-    {width:outerW, height:outerD},
-    {width:outerW, height:outerD},
-    {width:outerD, height:state.cavityH},
-    {width:outerD, height:state.cavityH}
+    {width:outerW, height:outerD, part:'TOP'},
+    {width:outerW, height:outerD, part:'BOTTOM'},
+    {width:outerD, height:state.cavityH, part:'SIDE'},
+    {width:outerD, height:state.cavityH, part:'SIDE'}
   ].sort(function(a, b){
     return Math.max(b.width, b.height) - Math.max(a.width, a.height);
   });
@@ -117,6 +117,11 @@ function packCabinetRows(rows, rectangles, sheetWidth, sheetLength, kerf){
         const choice = orientations[j];
         if (row.usedWidth + choice.width <= sheetWidth + kerf &&
             row.y + Math.max(row.height, choice.height) <= sheetLength + kerf){
+          row.panels.push({
+            x:row.usedWidth, y:row.y,
+            width:choice.width-kerf, height:choice.height-kerf,
+            part:piece.part
+          });
           row.usedWidth += choice.width;
           row.height = Math.max(row.height, choice.height);
           row.panelCount++;
@@ -132,7 +137,13 @@ function packCabinetRows(rows, rectangles, sheetWidth, sheetLength, kerf){
     for (let j=0; j<orientations.length; j++){
       const choice = orientations[j];
       if (choice.width <= sheetWidth + kerf && y + choice.height <= sheetLength + kerf){
-        rows.push({y:y, usedWidth:choice.width, height:choice.height, panelCount:1});
+        rows.push({
+          y:y, usedWidth:choice.width, height:choice.height, panelCount:1,
+          panels:[{
+            x:0, y:y, width:choice.width-kerf, height:choice.height-kerf,
+            part:piece.part
+          }]
+        });
         placed = true;
         break;
       }
@@ -150,13 +161,19 @@ function sheetPackingEstimate(){
   let count = 0;
   const pieces = makePanelRectangles();
   while (count < 100){
-    const next = packCabinetRows(rows.map(function(row){ return Object.assign({}, row); }),
+    const next = packCabinetRows(rows.map(function(row){
+      return Object.assign({}, row, {panels:row.panels.map(function(panel){ return Object.assign({}, panel); })});
+    }),
       pieces, material.sheetWidthMm, material.sheetLengthMm, kerf);
     if (!next) break;
     rows = next;
     count++;
   }
-  return {cabinetCount:count, rows:rows};
+  return {
+    cabinetCount:count,
+    rows:rows,
+    panels:rows.reduce(function(all, row){ return all.concat(row.panels); }, [])
+  };
 }
 
 function sheetYield(){
@@ -520,6 +537,15 @@ function render(){
       '<pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">' +
         '<line x1="0" y1="0" x2="0" y2="8" stroke="#000" stroke-width="0.55" stroke-opacity="0.30"/>' +
       '</pattern>' +
+      '<pattern id="cut-top" width="8" height="8" patternUnits="userSpaceOnUse">' +
+        '<line x1="0" y1="0" x2="8" y2="8" stroke="#000" stroke-width="0.55"/>' +
+      '</pattern>' +
+      '<pattern id="cut-bottom" width="8" height="8" patternUnits="userSpaceOnUse">' +
+        '<line x1="8" y1="0" x2="0" y2="8" stroke="#000" stroke-width="0.55"/>' +
+      '</pattern>' +
+      '<pattern id="cut-side" width="7" height="7" patternUnits="userSpaceOnUse">' +
+        '<circle cx="3.5" cy="3.5" r="0.7" fill="#000"/>' +
+      '</pattern>' +
     '</defs>'
   );
 
@@ -739,32 +765,52 @@ function render(){
       state.titleBottom, {size:14.5, weight:'bold', anchor:'middle', ls:'1.6'}));
   }
 
-  /* SCHEDULE */
+  /* SHEET CUT LAYOUT */
   {
     const bx = 20, by = 1272, bw = 610, bh = 210;
     let g = '';
     g += R(bx, by, bw, bh, 1.5);
     g += L(bx, by+30, bx+bw, by+30, 1.5);
-    g += T(bx+14, by+21, 'SCREW & LEG SCHEDULE', {size:12.5, weight:'bold'});
+    const material = selectedMaterial();
+    const layout = sheetPackingEstimate();
+    const diagramX = bx + 18;
+    const diagramY = by + 42;
+    const scale = Math.min(280/material.sheetLengthMm, 150/material.sheetWidthMm);
+    const diagramW = material.sheetLengthMm * scale;
+    const diagramH = material.sheetWidthMm * scale;
+    g += T(bx+14, by+21, 'SHEET CUT LAYOUT · ' + material.label.toUpperCase(), {size:12.5, weight:'bold'});
+    g += R(diagramX, diagramY, diagramW, diagramH, 1.2, null, '#fff');
 
-    const rows = [
-      ['S1', '4 × TOP SCREW'],
-      ['',   'CENTRED IN SIDE-PANEL THICKNESS (t/2 = ' + disp(t/2) + ' ' + unitAbbr() + ')'],
-      ['',   'FRONT OFFSET ' + disp(screwY1) + ' ' + unitAbbr() +
-             ' · SPACING ' + disp(spacing) + ' ' + unitAbbr()],
-      ['S2', '4 × BOTTOM SCREW'],
-      ['',   'SAME X / Y POSITIONS AS S1, MIRRORED ON THE BOTTOM PANEL'],
-      ['L',  '4 × LEG — Ø' + disp(legD) + ' × ' + disp(legH) + ' ' + unitAbbr() + ' HIGH'],
-      ['',   'CENTRES ' + disp(legInset) + ' ' + unitAbbr() + ' FROM OUTER EDGES'],
-      ['',   'LEGS REST ON THE TOP FACE OF THE MODULE BELOW WHEN STACKED']
-    ];
-
-    let yy = by + 52;
-    rows.forEach(function(r){
-      if (r[0]) g += T(bx+16, yy, r[0], {size:11.5, weight:'bold'});
-      g += T(bx+48, yy, r[1], {size:11});
-      yy += 19;
+    layout.panels.forEach(function(panel){
+      const x = diagramX + panel.y * scale;
+      const y = diagramY + panel.x * scale;
+      const w = panel.height * scale;
+      const h = panel.width * scale;
+      const pattern = panel.part === 'TOP' ? 'cut-top' :
+        (panel.part === 'BOTTOM' ? 'cut-bottom' : 'cut-side');
+      g += R(x, y, w, h, 0.7, null, 'url(#' + pattern + ')');
+      if (w > 24 && h > 12){
+        g += T(x+w/2, y+h/2+2, panel.part, {size:7, anchor:'middle'});
+      }
     });
+
+    const legendX = bx + 322;
+    let legendY = by + 55;
+    [
+      ['cut-top','TOP PANEL ×1'],
+      ['cut-bottom','BOTTOM PANEL ×1'],
+      ['cut-side','SIDE PANELS ×2']
+    ].forEach(function(item){
+      g += R(legendX, legendY-9, 14, 10, 0.7, null, 'url(#' + item[0] + ')');
+      g += T(legendX+20, legendY, item[1], {size:10.5});
+      legendY += 19;
+    });
+    g += T(legendX, legendY+1, layout.cabinetCount + ' CABINET SET(S) · ' +
+      layout.panels.length + ' PANELS', {size:10.5, weight:'bold'});
+    g += T(legendX, legendY+19, 'SHEET ' + formatValue(material.sheetWidthMm) + ' × ' +
+      formatValue(material.sheetLengthMm) + ' ' + unitAbbr(), {size:10});
+    g += T(legendX, legendY+36, 'Layout includes 3.2 mm saw kerf.', {size:9.5});
+    g += T(legendX, legendY+52, 'Screws marked in plan views.', {size:9.5});
 
     P.push(g);
   }
@@ -786,11 +832,12 @@ function render(){
     });
     g += L(bx+10, yy+7, bx+bw-10, yy+7, 0.8);
 
+    const cabinetYield = sheetYield();
     const rows = [
-      ['1','TOP PANEL',   '1', disp(oW)+' × '+disp(oD)+' × '+disp(t)],
-      ['2','BOTTOM PANEL','1', disp(oW)+' × '+disp(oD)+' × '+disp(t)],
-      ['3','SIDE PANEL',  '2', disp(oD)+' × '+disp(ch)+' × '+disp(t)],
-      ['4','LEG (DOWEL)', '4', 'Ø'+disp(legD)+' × '+disp(legH)]
+      ['1','TOP PANEL',   String(cabinetYield), disp(oW)+' × '+disp(oD)+' × '+disp(t)],
+      ['2','BOTTOM PANEL',String(cabinetYield), disp(oW)+' × '+disp(oD)+' × '+disp(t)],
+      ['3','SIDE PANEL',  String(cabinetYield*2), disp(oD)+' × '+disp(ch)+' × '+disp(t)],
+      ['4','LEG (DOWEL)', String(cabinetYield*4), 'Ø'+disp(legD)+' × '+disp(legH)]
     ];
 
     yy += 26;
