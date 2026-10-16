@@ -19,10 +19,10 @@ const SCREW_SPACING_DEFAULT = 182.7;
 
 const DEFAULTS = {
   cavityW: 330,
-  cavityD: 340,
-  cavityH: 340,
-  material: 'metrie-half-4x8',
-  ply:     12.7,
+  cavityD: 368.3,
+  cavityH: 330,
+  material: 'metrie-pine-three-quarter-4x8',
+  ply:     19.05,
   legD:    40,
   legH:    10,
   screwSpacing: SCREW_SPACING_DEFAULT,
@@ -80,7 +80,7 @@ function panelAreaMm2(){
 function panelAreaBreakdownMm2(){
   const t = state.ply;
   const outerW = state.cavityW + 2*t;
-  const outerD = state.cavityD + 2*t;
+  const outerD = state.cavityD;
   return {
     topBottom: 2*outerW*outerD,
     sides: 2*outerD*state.cavityH,
@@ -91,7 +91,7 @@ function panelAreaBreakdownMm2(){
 function makePanelRectangles(){
   const t = state.ply;
   const outerW = state.cavityW + 2*t;
-  const outerD = state.cavityD + 2*t;
+  const outerD = state.cavityD;
   return [
     {width:outerW, height:outerD, part:'TOP'},
     {width:outerW, height:outerD, part:'BOTTOM'},
@@ -271,7 +271,7 @@ const clampNum = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
    edge of the side panel, so the screw head never splits the panel. */
 function spacingLimits(){
   const t  = state.ply;
-  const oD = state.cavityD + 2*t;
+  const oD = state.cavityD;
   const margin = t + 5;
   const minSpacing = Math.max(20, 2*margin);
   const maxSpacing = Math.max(minSpacing, oD - 2*margin);
@@ -497,7 +497,7 @@ function render(){
   const legH  = Math.max(0, state.legH);
 
   const oW = cw + 2*t;
-  const oD = cd + 2*t;
+  const oD = cd;
   const oH = ch + 2*t;
 
   /* ---- screw positions — centred on the side panel thickness,
@@ -1144,7 +1144,7 @@ function sync(){
 function updateReadout(){
   const t  = state.ply;
   const cw = state.cavityW, cd = state.cavityD, ch = state.cavityH;
-  const oW = cw + 2*t, oD = cd + 2*t, oH = ch + 2*t;
+  const oW = cw + 2*t, oD = cd, oH = ch + 2*t;
   const legH = Math.max(0, state.legH);
   const spacing = resolvedSpacing();
   const screwY1 = (oD - spacing) / 2;
