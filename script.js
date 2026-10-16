@@ -710,15 +710,17 @@ function render(){
 
   /* BOTTOM PLAN */
   {
-    const X = v => txB + v*s;
-    const Y = v => ty2 + v*s;
+    const bottomX = cells.bottom.x + (cells.bottom.w - oD*s)/2;
+    const bottomY = cells.bottom.y + (cells.bottom.h - oW*s)/2;
+    const X = v => bottomX + v*s;
+    const Y = v => bottomY + v*s;
     let g = '';
 
-    g += R(X(0), Y(0), oW*s, oD*s, 2.2);
-    g += R(X(0), Y(0), t*s, oD*s, 0, null, 'url(#hatch)');
-    g += R(X(oW-t), Y(0), t*s, oD*s, 0, null, 'url(#hatch)');
-    g += L(X(t), Y(0), X(t), Y(oD), 1, '8 5');
-    g += L(X(oW-t), Y(0), X(oW-t), Y(oD), 1, '8 5');
+    g += R(X(0), Y(0), oD*s, oW*s, 2.2);
+    g += R(X(0), Y(0), oD*s, t*s, 0, null, 'url(#hatch)');
+    g += R(X(0), Y(oW-t), oD*s, t*s, 0, null, 'url(#hatch)');
+    g += L(X(0), Y(t), X(oD), Y(t), 1, '8 5');
+    g += L(X(0), Y(oW-t), X(oD), Y(oW-t), 1, '8 5');
 
     const legPts = [
       [legInset, legInset],
@@ -727,43 +729,39 @@ function render(){
       [oW-legInset, oD-legInset]
     ];
     legPts.forEach(function(p){
-      const px = X(p[0]), py = Y(p[1]);
+      const px = X(p[1]), py = Y(p[0]);
       g += C(px, py, (legD/2)*s, 2);
       g += L(px-18, py, px+18, py, 0.6);
       g += L(px, py-18, px, py+18, 0.6);
     });
 
-    g += screwMark(X(screwX1), Y(screwY1));
-    g += screwMark(X(screwX1), Y(screwY2));
-    g += screwMark(X(screwX2), Y(screwY1));
-    g += screwMark(X(screwX2), Y(screwY2));
+    g += screwMark(X(screwY1), Y(screwX1));
+    g += screwMark(X(screwY2), Y(screwX1));
+    g += screwMark(X(screwY1), Y(screwX2));
+    g += screwMark(X(screwY2), Y(screwX2));
 
-    g += T(X(screwX2)+14, Y(screwY1)-12, 'S2 ×4', {size:11, weight:'bold'});
+    g += T(X(screwY2)+14, Y(screwX2)-12, 'S2 ×4', {size:11, weight:'bold'});
 
     g += EXT(X(0), Y(0), X(0), Y(0)-40);
-    g += EXT(X(oW), Y(0), X(oW), Y(0)-40);
-    g += dimH(X(0), X(oW), Y(0)-34, disp(oW));
+    g += EXT(X(oD), Y(0), X(oD), Y(0)-40);
+    g += dimH(X(0), X(oD), Y(0)-34, disp(oD));
 
     g += EXT(X(0), Y(0), X(0)-52, Y(0));
-    g += EXT(X(0), Y(oD), X(0)-52, Y(oD));
-    g += dimV(Y(0), Y(oD), X(0)-46, disp(oD));
+    g += EXT(X(0), Y(oW), X(0)-52, Y(oW));
+    g += dimV(Y(0), Y(oW), X(0)-46, disp(oW));
 
-    const by = Y(oD) + 32;
-    g += EXT(X(0), Y(oD), X(0), by+6);
-    g += EXT(X(legInset), Y(oD-legInset), X(legInset), by+6);
-    g += EXT(X(oW-legInset), Y(oD-legInset), X(oW-legInset), by+6);
-    g += EXT(X(oW), Y(oD), X(oW), by+6);
-    g += dimH(X(0), X(legInset), by, disp(legInset));
-    g += dimH(X(oW-legInset), X(oW), by, disp(legInset));
-
-    g += L(X(oW-legInset)+20, Y(oD-legInset)+20, X(oW)+24, Y(oD)+50, 0.8);
-    g += C(X(oW-legInset), Y(oD-legInset), 2, 1);
-    g += T(X(oW)+28, Y(oD)+54, 'LEG Ø' + disp(legD) + ' × ' + disp(legH), {size:11.5});
-
-    g += T(X(0), Y(0)-56, 'BOTTOM VIEW — ORIENTATION MIRRORED', {size:11});
+    const legLabelX = X(0) + 10;
+    const legLabelY = Y(0) - 54;
+    const legLabel = 'LEG Ø' + disp(legD) + ' × ' + disp(legH);
+    const leaderX = legLabelX + 112;
+    const leaderY = legLabelY + 3;
+    g += L(X(legInset), Y(legInset), leaderX, leaderY, 0.9);
+    g += C(X(legInset), Y(legInset), 2, 1);
+    g += R(legLabelX-3, legLabelY-11, 116, 15, 0, null, '#fff');
+    g += T(legLabelX, legLabelY, legLabel, {size:10.5});
 
     P.push(g);
-    P.push(T(cells.bottom.x + cells.bottom.w/2, Y(0) - 95,
+    P.push(T(cells.bottom.x + cells.bottom.w/2, ty2 - 95,
       state.titleBottom, {size:14.5, weight:'bold', anchor:'middle', ls:'1.6'}));
   }
 
