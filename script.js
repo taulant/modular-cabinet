@@ -8,11 +8,9 @@ const MONTHS = ['January','February','March','April','May','June',
 
 const MM_PER_INCH = 25.4;
 const MATERIALS = [
-  {value:'alexandria-quarter-2x4', label:'Alexandria birch handy panel — 1/4 in, 2 × 4 ft', category:'Birch plywood', thicknessMm:6.35, sheetWidthMm:609.6, sheetLengthMm:1219.2, priceCad:18.76, priceSource:'User-provided Home Depot screenshot, 2026-10-15', url:'https://www.homedepot.ca/search?q=Alexandria%201%2F4%20birch%20plywood%202%20x%204'},
-  {value:'metrie-quarter-4x8', label:'Metrie sanded birch plywood — 1/4 in, 4 × 8 ft', category:'Birch plywood', thicknessMm:6.35, sheetWidthMm:1219.2, sheetLengthMm:2438.4, priceCad:36.98, priceSource:'User-provided Home Depot screenshot, 2026-10-15', url:'https://www.homedepot.ca/search?q=Metrie%201%2F4%20sanded%20birch%20plywood%204%20x%208'},
   {value:'metrie-half-4x8', label:'Metrie sanded birch plywood — 1/2 in, 4 × 8 ft', category:'Birch plywood', thicknessMm:12.7, sheetWidthMm:1219.2, sheetLengthMm:2438.4, priceCad:52.98, priceSource:'User-provided Home Depot screenshot, 2026-10-15', url:'https://www.homedepot.ca/search?q=Metrie%201%2F2%20sanded%20birch%20plywood%204%20x%208'},
-  {value:'columbia-three-quarter-2x4', label:'Columbia birch plywood — 3/4 in, 2 × 4 ft', category:'Birch plywood', thicknessMm:19.05, sheetWidthMm:609.6, sheetLengthMm:1219.2, priceCad:40.74, priceSource:'User-provided Home Depot screenshot, 2026-10-15', url:'https://www.homedepot.ca/search?q=Columbia%203%2F4%20birch%20plywood%202%20x%204'},
-  {value:'columbia-three-quarter-2x8', label:'Columbia birch plywood — 3/4 in, 2 × 8 ft', category:'Birch plywood', thicknessMm:19.05, sheetWidthMm:609.6, sheetLengthMm:2438.4, priceCad:72.75, priceSource:'User-provided Home Depot screenshot, 2026-10-15', url:'https://www.homedepot.ca/search?q=Columbia%203%2F4%20birch%20plywood%202%20x%208'}
+  {value:'columbia-three-quarter-2x8', label:'Columbia birch plywood — 3/4 in, 2 × 8 ft', category:'Birch plywood', thicknessMm:19.05, sheetWidthMm:609.6, sheetLengthMm:2438.4, priceCad:72.75, priceSource:'User-provided Home Depot screenshot, 2026-10-15', url:'https://www.homedepot.ca/search?q=Columbia%203%2F4%20birch%20plywood%202%20x%208'},
+  {value:'metrie-pine-three-quarter-4x8', label:'Metrie Premium Pine Plywood ACX — 3/4 in, 4 × 8 ft', category:'Pine plywood', thicknessMm:19.05, sheetWidthMm:1219.2, sheetLengthMm:2438.4, priceCad:106.00, priceSource:'User-provided listing, 2026-10-15', url:'https://www.homedepot.ca/search?q=Metrie%20Premium%20Pine%20Plywood%20ACX%203%2F4%20inch%204%20ft%20x%208%20ft'}
 ];
 
 /* default screw spacing (mm) — 50% of the default outer depth
