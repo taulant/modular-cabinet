@@ -27,6 +27,7 @@ const DEFAULTS = {
   legH:    10,
   screwSpacing: SCREW_SPACING_DEFAULT,
   units:   'mm',
+  author:  'Taulant Sulko',
   header:  'MODULAR CABINET',
   subheader: 'STACKABLE VINYL STORAGE',
   titleFront: 'FRONT',
@@ -49,6 +50,7 @@ const URL_NUM_KEYS = {
 /* short URL key  →  state key (text labels) */
 const URL_TXT_KEYS = {
   m:  'material',
+  au: 'author',
   h:  'header',
   sh: 'subheader',
   ft: 'titleFront',
@@ -550,8 +552,8 @@ function render(){
   /* TITLE BLOCK */
   P.push(
     T(40, 48, state.header, {size:22, weight:'bold', ls:'0.8'}),
-    T(40, 70, state.subheader, {size:12.5, ls:'1'}),
-    T(40, 90,     'MATERIAL: ' + selectedMaterial().category.toUpperCase() + ' · THICKNESS: ' + disp(t) + ' ' + unitAbbr() + ' · JOINERY: SCREWS FROM TOP & BOTTOM FACES · OPEN BACK',
+    T(40, 70, state.subheader + ' · BY ' + state.author.toUpperCase(), {size:12.5, ls:'1'}),
+    T(40, 90, 'MATERIAL: ' + selectedMaterial().category.toUpperCase() + ' · THICKNESS: ' + disp(t) + ' ' + unitAbbr() + ' · JOINERY: SCREWS FROM TOP & BOTTOM FACES · OPEN BACK',
       {size:11.5}),
     T(1200, 48, todayFormatted(), {size:12, anchor:'end', weight:'bold'}),
     T(1200, 68, 'UNITS: ' + unitAbbr(), {size:11, anchor:'end'}),
@@ -881,6 +883,7 @@ const PLY_PRESETS = [
 ];
 
 const LABEL_FIELDS = [
+  {id:'label-author', key:'author', label:'Author'},
   {id:'label-hdr', key:'header',      label:'Header'},
   {id:'label-sub', key:'subheader',   label:'Sub-header'},
   {id:'label-ft',  key:'titleFront',  label:'Front view title'},
